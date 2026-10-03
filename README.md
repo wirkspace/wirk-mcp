@@ -34,7 +34,9 @@ For Codex:
 codex mcp add wirk -- "$(command -v wirk-mcp)"
 ```
 
-Start a new agent session after registration. Add the [WIRK skill](https://github.com/wirkspace/wirk-skill#install) separately. The Claude Code plugin is an alternative to manual MCP registration and skill copying; use one setup route to avoid duplicate tools. See [Getting started](https://wirk.life/docs/getting-started/) for the complete account and agent setup.
+Start a new agent session after registration and ask: "Call the WIRK MCP tool `wirk_status` and summarize its result." Confirm that the agent makes a `wirk_status` tool call and returns your wirkspace. A shell `wirk status` result verifies CLI access only. If the tool is missing, check the host registration before continuing.
+
+Add the [WIRK skill](https://github.com/wirkspace/wirk-skill#install) separately. The Claude Code plugin is an alternative to manual MCP registration and skill copying; use one setup route to avoid duplicate tools. See [Getting started](https://wirk.life/docs/getting-started/) for the complete account and agent setup.
 
 The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart.
 
