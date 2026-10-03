@@ -91,7 +91,7 @@
   },
   {
    "name": "wirk_write",
-   "description": "Change items and links in one atomic batch. Put the revision you read (rN) of each existing item you change or link from in expect; one left out is refused as basis_changed. Agents propose context (mode propose, with a reason). After an uncertain result, resend the identical body with the request_id it names.",
+   "description": "Change items and links in one atomic batch. Put the revision you read (rN) of each existing item you change or link from in expect; one left out is refused as basis_changed. Context changes apply when your person may make them; otherwise they are refused with requires_review: propose them (mode propose, with a reason). After an uncertain result, resend the identical body with the request_id it names.",
    "inputSchema": {
     "type": "object",
     "required": [
@@ -140,7 +140,7 @@
   },
   {
    "name": "wirk_review",
-   "description": "Only people decide proposals: as an agent this is refused with person_required, and the proposal waits. Your person decides at their terminal: wirk review ID@N accept --reason WHY --person.",
+   "description": "Only people decide proposals: as an agent this is refused (not_authorized for your own proposal, person_required for any other), and the proposal waits. Your person decides at their terminal: wirk review ID@N accept --reason WHY --person.",
    "inputSchema": {
     "type": "object",
     "required": [
