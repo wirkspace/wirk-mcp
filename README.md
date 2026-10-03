@@ -4,18 +4,37 @@
 
 ## Install
 
-One command installs the wirk command and this server, sets up Claude Code and Codex when they are present, and logs in:
+Use [uv](https://docs.astral.sh/uv/getting-started/installation/) to install the CLI from PyPI and the MCP server from its public GitHub release:
 
 ```
-curl -fsSL https://wirk.life/install | sh
+uv tool install wirk
+uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.0/wirk_mcp-0.4.0-py3-none-any.whl
 ```
 
-By hand: `uv tool install wirk-mcp` (or the wheels attached to a [release](https://github.com/wirkspace/wirk-mcp/releases)), `wirk login`, then point your agent host at the installed binary:
+The commands install `wirk` and `wirk-mcp`, respectively. Version 0.4.0 of `wirk-mcp` is available from [GitHub Releases](https://github.com/wirkspace/wirk-mcp/releases/tag/v0.4.0), not PyPI. Both packages require Python 3.12 or later. If you need uv, use `brew install uv` with Homebrew or `pipx install uv` with pipx. Follow uv's PATH guidance so your shell can find both commands.
+
+Authorize this machine, approve the code in your browser, and check the connection:
 
 ```
-claude mcp add --scope user wirk -- "$(command -v wirk-mcp)"      # Claude Code
-codex mcp add wirk -- "$(command -v wirk-mcp)"                    # Codex
+wirk login
+wirk status
 ```
+
+Then register the installed server with the host you use. First check that `command -v wirk-mcp` prints its path.
+
+For Claude Code:
+
+```
+claude mcp add --scope user wirk -- "$(command -v wirk-mcp)"
+```
+
+For Codex:
+
+```
+codex mcp add wirk -- "$(command -v wirk-mcp)"
+```
+
+Start a new agent session after registration. Add the [WIRK skill](https://github.com/wirkspace/wirk-skill#install) separately. The Claude Code plugin is an alternative to manual MCP registration and skill copying; use one setup route to avoid duplicate tools. See [Getting started](https://wirk.life/docs/getting-started/) for the complete account and agent setup.
 
 The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart.
 
