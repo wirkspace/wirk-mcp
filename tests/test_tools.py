@@ -39,10 +39,22 @@ def test_exactly_five_compact_tools(mcp):
     assert all(t["inputSchema"]["additionalProperties"] is False for t in tools)
 
 
-def test_no_person_command_or_administration_in_agent_text(mcp):
+def test_agent_text_names_only_the_persons_decision(mcp):
     text = json.dumps(definitions(mcp.tools())) + mcp.instructions()
-    assert "--person" not in text and "admin" not in text and "person-token" not in text
+    assert re.findall(r"wirk \w+[^\"]*?--person", text) == ["wirk review ID@N accept --reason WHY --person"] * 2
+    assert "admin" not in text and "person-token" not in text
     assert not re.search(r"\bsteward(?!_id)", text)
+
+
+def test_agent_text_says_who_decides_what_is_live_and_what_refusals_mean(mcp):
+    tools = {t["name"]: t["description"] for t in definitions(mcp.tools())}
+    assert "Only people decide proposals" in mcp.instructions()
+    assert "person_required" in tools["wirk_review"] and "--person" in tools["wirk_review"]
+    assert "not_authorized for your own" in tools["wirk_review"]
+    assert tools["wirk_show"].startswith("Not live yet") and "views_unavailable" in tools["wirk_show"]
+    assert "when you may make" in tools["wirk_write"] and "requires_review" in tools["wirk_write"]
+    assert "basis_changed" in tools["wirk_write"]
+    assert "quotation_mismatch" in json.dumps(definitions(mcp.tools()))
 
 
 @pytest.mark.parametrize("tool, route", [("wirk_status", "/v2/status"), ("wirk_query", "/v2/query"),
@@ -164,7 +176,7 @@ def test_privacy_wording_and_no_v1():
 def test_the_package_pins_the_tested_cli():
     import tomllib
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-    assert "wirk==0.3.0" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
+    assert "wirk==0.3.1" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
 
 
 def test_an_unknown_outcome_is_worded_for_mcp(mcp):
