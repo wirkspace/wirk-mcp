@@ -50,8 +50,10 @@ def test_agent_text_says_who_decides_what_is_live_and_what_refusals_mean(mcp):
     tools = {t["name"]: t["description"] for t in definitions(mcp.tools())}
     assert "Only people decide proposals" in mcp.instructions()
     assert "person_required" in tools["wirk_review"] and "--person" in tools["wirk_review"]
+    assert "not_authorized for your own" in tools["wirk_review"]
     assert tools["wirk_show"].startswith("Not live yet") and "views_unavailable" in tools["wirk_show"]
-    assert "Agents propose context" in tools["wirk_write"] and "basis_changed" in tools["wirk_write"]
+    assert "when your person may make" in tools["wirk_write"] and "requires_review" in tools["wirk_write"]
+    assert "basis_changed" in tools["wirk_write"]
     assert "quotation_mismatch" in json.dumps(definitions(mcp.tools()))
 
 
