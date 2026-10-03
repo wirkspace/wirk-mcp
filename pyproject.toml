@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "wirk-mcp"
-version = "0.3.1"
+version = "0.4.0"
 description = "WIRK's five tools for agents over MCP: status, query, write, review and show"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
-dependencies = ["wirk==0.3.1", "mcp>=2.2,<3", "anyio>=4"]
+dependencies = ["wirk==0.4.0", "mcp>=2.2,<3", "anyio>=4"]
 
 [project.optional-dependencies]
 test = ["pytest>=8,<10", "pyyaml>=6"]
