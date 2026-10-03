@@ -57,6 +57,15 @@ def test_agent_text_says_who_decides_what_is_live_and_what_refusals_mean(mcp):
     assert "quotation_mismatch" in json.dumps(definitions(mcp.tools()))
 
 
+def test_meaning_ranking_names_pro_and_expect_names_parent_work(mcp):
+    """Free and Team rank by words (decision 65); a contributes_to link's parent work also needs its revision."""
+    text = json.dumps(definitions(mcp.tools()), ensure_ascii=False) + mcp.instructions()
+    for sentence in re.split(r"(?<=[.;])\s", text):
+        assert "by meaning" not in sentence or "Pro" in sentence, sentence
+    tools = {t["name"]: t["description"] for t in definitions(mcp.tools())}
+    assert "parent work of a contributes_to link" in tools["wirk_write"]
+
+
 @pytest.mark.parametrize("tool, route", [("wirk_status", "/v2/status"), ("wirk_query", "/v2/query"),
                                          ("wirk_write", "/v2/write"), ("wirk_review", "/v2/review"),
                                          ("wirk_show", "/v2/show")])
