@@ -8,10 +8,10 @@ Use [uv](https://docs.astral.sh/uv/getting-started/installation/) to install the
 
 ```
 uv tool install wirk
-uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.0/wirk_mcp-0.4.0-py3-none-any.whl
+uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.1/wirk_mcp-0.4.1-py3-none-any.whl
 ```
 
-The commands install `wirk` and `wirk-mcp`, respectively. Version 0.4.0 of `wirk-mcp` is available from [GitHub Releases](https://github.com/wirkspace/wirk-mcp/releases/tag/v0.4.0), not PyPI. Both packages require Python 3.12 or later. If you need uv, use `brew install uv` with Homebrew or `pipx install uv` with pipx. Follow uv's PATH guidance so your shell can find both commands.
+The commands install `wirk` and `wirk-mcp`, respectively. Version 0.4.1 of `wirk-mcp` is available from [GitHub Releases](https://github.com/wirkspace/wirk-mcp/releases/tag/v0.4.1), not PyPI. Both packages require Python 3.12 or later. If you need uv, use `brew install uv` with Homebrew or `pipx install uv` with pipx. Follow uv's PATH guidance so your shell can find both commands.
 
 Authorize this machine, approve the code in your browser, and check the connection:
 

@@ -12,8 +12,8 @@ ROOT = Path(__file__).parent.parent
 def test_depends_on_the_wirk_package_by_name():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
     assert project["name"] == "wirk-mcp"
-    assert "wirk==0.4.0" in project["dependencies"]  # the CLI this server was tested with, published as wirk
-    assert project["version"] == __import__("wirk_mcp").__version__ == "0.4.0"
+    assert "wirk==0.4.1" in project["dependencies"]  # the CLI this server was tested with, published as wirk
+    assert project["version"] == __import__("wirk_mcp").__version__ == "0.4.1"
     assert not any("git+" in dependency for dependency in project["dependencies"])  # PyPI refuses direct references
 
 
@@ -35,11 +35,16 @@ def test_every_workflow_parses_as_yaml():
         assert "jobs" in yaml.safe_load(workflow.read_text()), workflow.name
 
 
-def test_the_readme_and_release_notes_give_the_sites_install_command():
-    for name in ("README.md", ".github/workflows/release.yml"):
-        assert "curl -fsSL https://wirk.life/install | sh" in (ROOT / name).read_text(), name
+def test_the_readme_leads_with_uv_install():
+    assert "uv tool install wirk" in (ROOT / "README.md").read_text().split("## Use", 1)[0]
 
 
 def test_ci_installs_the_pinned_cli():
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
-    assert 'pip install "wirk==0.4.0"' in ci
+    assert 'pip install "wirk==0.4.1"' in ci
+
+
+def test_release_attaches_the_managed_launcher():
+    workflow = (ROOT / ".github/workflows/release.yml").read_text()
+    assert "cp scripts/managed_client.py dist/" in workflow
+    assert (ROOT / "scripts/managed_client.py").is_file()
