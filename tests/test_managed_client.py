@@ -65,7 +65,7 @@ def test_approved_release_installs_cli_mcp_and_skill_as_one_set(tmp_path, assets
     assert result.returncode == 0, result.stderr
     assert "wirk 0.4.1" in result.stdout
     assert (home / "current/venv/bin/wirk-mcp").exists()
-    assert "Background agents never decide" in (home / "current/skill/SKILL.md").read_text()
+    assert hashlib.sha256((home / "current/skill/SKILL.md").read_bytes()).hexdigest() == assets["skill"]["sha256"]
     assert stat.S_IMODE((home / "current/manifest.json").stat().st_mode) == 0o600
 
 
@@ -172,3 +172,23 @@ def test_update_lock_wait_is_bounded(tmp_path, assets, monkeypatch):
         fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
         with pytest.raises(TimeoutError, match="lock timed out"):
             module.main()
+
+
+def test_download_deadline_stops_a_trickling_response(monkeypatch):
+    import importlib.util
+    script = ROOT / "scripts/managed_client.py"
+    spec = importlib.util.spec_from_file_location("managed_client_download", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    class SlowResponse:
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            pass
+        def read(self, _):
+            return b"x"
+    monkeypatch.setattr(module.urllib.request, "urlopen", lambda _, timeout: SlowResponse())
+    ticks = iter([0, 0, module.DOWNLOAD_WAIT + 1])
+    monkeypatch.setattr(module.time, "monotonic", lambda: next(ticks))
+    with pytest.raises(TimeoutError, match="download timed out"):
+        module.fetch("https://wirk.life/test")

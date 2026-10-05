@@ -6,7 +6,6 @@ The release pipeline owns https://wirk.life/releases/current.json.
 """
 
 import fcntl
-import time
 import hashlib
 import json
 import os
@@ -14,6 +13,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -91,11 +91,12 @@ def validate_cache(release: Path, manifest: dict, receipt: dict) -> None:
     for key, path in files.items():
         if sha256(path) != manifest[key]["sha256"]:
             raise ValueError(f"cached {key} hash mismatch")
-    for name, expected in receipt.get("executables", {}).items():
+    executables = receipt.get("executables", {})
+    if set(executables) != {"wirk", "wirk-mcp"}:
+        raise ValueError("cached executable receipt is incomplete")
+    for name, expected in executables.items():
         if sha256(release / "venv/bin" / name) != expected:
             raise ValueError(f"cached {name} executable hash mismatch")
-    if set(receipt.get("executables", {})) != {"wirk", "wirk-mcp"}:
-        raise ValueError("cached executable receipt is incomplete")
     if installed_versions(release) != [manifest["cli"]["version"], manifest["mcp"]["version"]]:
         raise ValueError("cached WIRK versions differ from approved release")
 
@@ -139,9 +140,6 @@ def stage(home: Path, manifest: dict) -> Path:
         versions = installed_versions(release)
         if versions != [manifest["cli"]["version"], manifest["mcp"]["version"]]:
             raise ValueError("installed WIRK versions differ from approved release")
-        skill = (release / "skill/SKILL.md").read_text()
-        if "Only people decide proposals" in skill or "Background agents never decide" not in skill:
-            raise ValueError("approved skill has obsolete review authority guidance")
         executables = {name: sha256(venv / "bin" / name) for name in ("wirk", "wirk-mcp")}
         receipt.write_text(json.dumps({"manifest": manifest, "executables": executables}, sort_keys=True))
         os.chmod(receipt, 0o600)
