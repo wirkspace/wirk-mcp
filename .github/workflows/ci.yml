@@ -27,7 +27,7 @@ jobs:
           GIT_TERMINAL_PROMPT: "0"
         run: |
           if python -m pip install "wirk==0.4.1" || python -m pip install "wirk @ git+https://github.com/wirkspace/wirk-cli@codex/package-install-docs"; then
-            python -m pip install --no-deps . && python -m pip install "mcp>=2.2,<3" "anyio>=4" pytest pyyaml && python -m pytest tests -q -rs
+            python -m pip install --no-deps . && python -m pip install "mcp>=2.2,<3" "anyio>=4" pytest pyyaml uv && python -m pytest tests -q -rs
           elif [ "$PRIVATE" = "true" ]; then
             echo "::notice::the wirk package is not installable from this private repository's runner yet; the MCP tests run once it is public or on PyPI."
           else
