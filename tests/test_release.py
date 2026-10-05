@@ -43,3 +43,12 @@ def test_the_readme_and_release_notes_give_the_sites_install_command():
 def test_ci_installs_the_pinned_cli():
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
     assert 'pip install "wirk==0.4.0"' in ci
+
+
+def test_the_readme_by_hand_path_works_beside_an_earlier_install():
+    """wirk-mcp is not on PyPI, and Claude Code's add refuses while an earlier server named wirk is registered."""
+    text = (ROOT / "README.md").read_text()
+    assert "uv tool install wirk-mcp" not in text
+    assert "uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.0/wirk_mcp-0.4.0-py3-none-any.whl" in text
+    assert "claude mcp remove --scope user wirk" in text
+    assert text.index("mcp get wirk") < text.index("claude mcp add")
