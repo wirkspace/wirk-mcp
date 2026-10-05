@@ -57,6 +57,13 @@ def test_agent_text_says_who_decides_what_is_live_and_what_refusals_mean(mcp):
     assert "quotation_mismatch" in json.dumps(definitions(mcp.tools()))
 
 
+def test_agents_claim_wirk_before_starting_it(mcp):
+    """Samuel, 5 October: claim before starting, so agents sharing one principal don't pick up the same work."""
+    text = mcp.instructions()
+    assert "Before starting wirk, fetch it" in text and "claimed by another session" in text
+    assert "status in_progress, owner me" in text and "your session, branch and files" in text
+
+
 def test_meaning_ranking_names_pro_and_expect_names_parent_work(mcp):
     """Free and Team rank by words (decision 65); a contributes_to link's parent work also needs its revision."""
     text = json.dumps(definitions(mcp.tools()), ensure_ascii=False) + mcp.instructions()
