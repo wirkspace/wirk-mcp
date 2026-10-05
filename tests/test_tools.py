@@ -62,6 +62,8 @@ def test_agents_claim_wirk_before_starting_it(mcp):
     text = mcp.instructions()
     assert "Before starting wirk, fetch it" in text and "claimed by another session" in text
     assert "status in_progress, owner me" in text and "your session, branch and files" in text
+    assert "a first line above the old body" in text  # body replaces the whole body: keep the description
+    assert "leave it and say so" in text and "not a lock" in text
 
 
 def test_meaning_ranking_names_pro_and_expect_names_parent_work(mcp):
