@@ -10,7 +10,7 @@ One command installs the wirk command and this server, sets up Claude Code and C
 curl -fsSL https://wirk.life/install | sh
 ```
 
-By hand: install the wheel attached to a [release](https://github.com/wirkspace/wirk-mcp/releases) (`uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.0/wirk_mcp-0.4.0-py3-none-any.whl`), run `wirk login`, then point your agent host at the installed binary. First check `claude mcp get wirk` or `codex mcp get wirk`: a server named wirk with another command is an earlier install. Replace it (Claude Code needs `claude mcp remove --scope user wirk` first; Codex's add replaces it), or skip the add when it already runs this binary:
+By hand: install the wheel attached to a [release](https://github.com/wirkspace/wirk-mcp/releases) (`uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.1/wirk_mcp-0.4.1-py3-none-any.whl`), run `wirk login`, then point your agent host at the installed binary. First check `claude mcp get wirk` or `codex mcp get wirk`: a server named wirk with another command is an earlier install. Replace it (Claude Code needs `claude mcp remove --scope user wirk` first; Codex's add replaces it), or skip the add when it already runs this binary:
 
 ```
 claude mcp add --scope user wirk -- "$(command -v wirk-mcp)"      # Claude Code
@@ -34,6 +34,10 @@ The tests need the `wirk` package installed beside this one: `uv pip install -e 
 ## Releasing
 
 A `v*` tag matching `pyproject.toml`'s version tests against the `wirk` release of the same version, attaches the wheel, the sdist and `SHA256SUMS` to a GitHub Release, and publishes to PyPI through trusted publishing once the `wirk-mcp` project trusts this repository's `release.yml` in the `pypi` environment and the repository variable `PYPI_PUBLISH` is `true`. No token is stored anywhere.
+
+## Development version
+
+Main is `0.4.2.dev0` and is unreleased. The published `0.4.1` tag contains the catch-up guidance patch and uses the released `wirk==0.4.1` client.
 
 ## License
 

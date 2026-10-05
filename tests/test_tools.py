@@ -60,7 +60,7 @@ def test_agent_text_says_who_decides_what_is_live_and_what_refusals_mean(mcp):
 def test_agents_claim_wirk_before_starting_it(mcp):
     """Samuel, 5 October: claim before starting, so agents sharing one principal don't pick up the same work."""
     text = mcp.instructions()
-    assert "Before starting wirk, fetch it" in text and "claimed by another session" in text
+    assert "Before doing work, fetch it" in text and "claimed by another session" in text
     assert "status in_progress, owner me" in text and "your session, branch and files" in text
     assert "a first line above the old body" in text  # body replaces the whole body: keep the description
     assert "leave it and say so" in text and "not a lock" in text
@@ -194,7 +194,7 @@ def test_privacy_wording_and_no_v1():
 def test_the_package_pins_the_tested_cli():
     import tomllib
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-    assert "wirk==0.4.0" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
+    assert "wirk==0.4.1" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
 
 
 def test_an_unknown_outcome_is_worded_for_mcp(mcp):
@@ -209,3 +209,11 @@ def test_the_server_reuses_the_clis_connection_and_ids():
     import inspect
     source = inspect.getsource(server)
     assert "connect(" in source and "new_id(" in source and "read_token" not in source and "token_hex(5)" not in source
+
+
+def test_catchups_use_linked_wirk_before_optional_verification(mcp):
+    guidance = mcp.instructions() + " " + next(t.description for t in mcp.tools() if t.name == "wirk_status")
+    for trigger in ("catch-up", "what's left", "priorities", "blockers"):
+        assert trigger in guidance
+    for rule in ("direct MCP", "read-only", "no claim", "linked records", "implementation", "requested verification", "specific discrepancy", "unverified"):
+        assert rule in guidance
