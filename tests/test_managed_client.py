@@ -249,3 +249,19 @@ def test_missing_active_receipt_never_deletes_current_release(tmp_path, assets):
     assert result.returncode != 0
     assert (home / "current").resolve() == current
     assert (home / "current").exists()
+
+
+def test_missing_receipt_preserves_active_release_through_home_alias(tmp_path, assets):
+    alias = tmp_path / "alias"
+    alias.symlink_to(tmp_path, target_is_directory=True)
+    approved = {"schema": 1, "release_id": "test-041", **assets}
+    result, home = run(alias, approved)
+    assert result.returncode == 0, result.stderr
+    current = (home / "current").resolve()
+    (current / "manifest.json").unlink()
+    broken = json.loads(json.dumps(approved))
+    broken["skill"]["url"] = (tmp_path / "missing.md").as_uri()
+    result, home = run(alias, broken)
+    assert result.returncode != 0
+    assert (home / "current").resolve() == current
+    assert (home / "current").exists()

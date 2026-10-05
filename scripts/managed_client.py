@@ -130,7 +130,7 @@ def validate_cache(release: Path, manifest: dict, receipt: dict) -> None:
 def stage(home: Path, manifest: dict) -> Path:
     releases = home / "releases"
     releases.mkdir(parents=True, exist_ok=True)
-    release = releases / manifest["release_id"]
+    release = (releases / manifest["release_id"]).resolve()
     receipt = release / "manifest.json"
     if release.exists():
         if receipt.exists():
