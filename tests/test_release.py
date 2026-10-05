@@ -42,9 +42,18 @@ def test_the_readme_leads_with_uv_install():
 def test_ci_installs_the_pinned_cli():
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
     assert 'pip install "wirk==0.4.1"' in ci
+    assert "wirk-cli@e509e24164a4cd374b6bae5fdf793626e69c9b5d" in ci
 
 
 def test_release_attaches_the_managed_launcher():
     workflow = (ROOT / ".github/workflows/release.yml").read_text()
     assert "cp scripts/managed_client.py dist/" in workflow
     assert (ROOT / "scripts/managed_client.py").is_file()
+
+
+def test_the_readme_by_hand_path_replaces_an_earlier_install():
+    text = (ROOT / "README.md").read_text()
+    assert "uv tool install wirk-mcp" not in text
+    assert "uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.1/wirk_mcp-0.4.1-py3-none-any.whl" in text
+    assert "claude mcp remove --scope user wirk" in text
+    assert text.index("mcp get wirk") < text.index("claude mcp add")

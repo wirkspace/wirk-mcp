@@ -11,7 +11,7 @@ uv tool install wirk
 uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.1/wirk_mcp-0.4.1-py3-none-any.whl
 ```
 
-The commands install `wirk` and `wirk-mcp`, respectively. Version 0.4.1 of `wirk-mcp` is available from [GitHub Releases](https://github.com/wirkspace/wirk-mcp/releases/tag/v0.4.1), not PyPI. Both packages require Python 3.12 or later. If you need uv, use `brew install uv` with Homebrew or `pipx install uv` with pipx. Follow uv's PATH guidance so your shell can find both commands.
+The commands install `wirk` and `wirk-mcp`, respectively. Both packages require Python 3.12 or later. If you need uv, use `brew install uv` with Homebrew or `pipx install uv`. Follow uv's PATH guidance so your shell can find both commands.
 
 Authorize this machine, approve the code in your browser, and check the connection:
 
@@ -20,7 +20,7 @@ wirk login
 wirk status
 ```
 
-Then register the installed server with the host you use. First check that `command -v wirk-mcp` prints its path.
+Then register the installed server with the host you use. Check that `command -v wirk-mcp` prints its path. First run `claude mcp get wirk` or `codex mcp get wirk`; a server named wirk with a different command is an earlier install. Claude Code needs `claude mcp remove --scope user wirk` before adding its replacement; Codex add replaces its earlier entry. If the registered command is already this binary, keep it.
 
 For Claude Code:
 
