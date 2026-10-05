@@ -39,22 +39,40 @@ def test_exactly_five_compact_tools(mcp):
     assert all(t["inputSchema"]["additionalProperties"] is False for t in tools)
 
 
-def test_agent_text_names_only_the_persons_decision(mcp):
+def test_agent_text_names_nothing_of_the_persons(mcp):
     text = json.dumps(definitions(mcp.tools())) + mcp.instructions()
-    assert re.findall(r"wirk \w+[^\"]*?--person", text) == ["wirk review ID@N accept --reason WHY --person"] * 2
-    assert "admin" not in text and "person-token" not in text
+    assert "--person" not in text and "admin" not in text and "person-token" not in text
     assert not re.search(r"\bsteward(?!_id)", text)
 
 
 def test_agent_text_says_who_decides_what_is_live_and_what_refusals_mean(mcp):
+    """Decision 85: an agent whose role may review decides with wirk_review; a background agent never does."""
     tools = {t["name"]: t["description"] for t in definitions(mcp.tools())}
-    assert "Only people decide proposals" in mcp.instructions()
-    assert "person_required" in tools["wirk_review"] and "--person" in tools["wirk_review"]
-    assert "not_authorized for your own" in tools["wirk_review"]
+    assert "wirk_review when your role may review" in mcp.instructions() and "only people" not in mcp.instructions().lower()
+    assert "Anyone whose role may review decides" in tools["wirk_review"] and "never decides" in tools["wirk_review"]
+    assert "person_required" not in tools["wirk_review"] and "not_authorized" in tools["wirk_review"]
     assert tools["wirk_show"].startswith("Not live yet") and "views_unavailable" in tools["wirk_show"]
     assert "when you may make" in tools["wirk_write"] and "requires_review" in tools["wirk_write"]
     assert "basis_changed" in tools["wirk_write"]
     assert "quotation_mismatch" in json.dumps(definitions(mcp.tools()))
+
+
+def test_agents_claim_wirk_before_starting_it(mcp):
+    """Samuel, 5 October: claim before starting, so agents sharing one principal don't pick up the same work."""
+    text = mcp.instructions()
+    assert "Before doing work, fetch it" in text and "claimed by another session" in text
+    assert "status in_progress, owner me" in text and "your session, branch and files" in text
+    assert "a first line above the old body" in text  # body replaces the whole body: keep the description
+    assert "leave it and say so" in text and "not a lock" in text
+
+
+def test_meaning_ranking_names_pro_and_expect_names_parent_work(mcp):
+    """Free and Team rank by words (decision 65); a contributes_to link's parent work also needs its revision."""
+    text = json.dumps(definitions(mcp.tools()), ensure_ascii=False) + mcp.instructions()
+    for sentence in re.split(r"(?<=[.;])\s", text):
+        assert "by meaning" not in sentence or "Pro" in sentence, sentence
+    tools = {t["name"]: t["description"] for t in definitions(mcp.tools())}
+    assert "parent work of a contributes_to link" in tools["wirk_write"]
 
 
 @pytest.mark.parametrize("tool, route", [("wirk_status", "/v2/status"), ("wirk_query", "/v2/query"),
@@ -176,7 +194,7 @@ def test_privacy_wording_and_no_v1():
 def test_the_package_pins_the_tested_cli():
     import tomllib
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-    assert "wirk==0.4.0" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
+    assert "wirk==0.4.1" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
 
 
 def test_an_unknown_outcome_is_worded_for_mcp(mcp):
@@ -191,3 +209,11 @@ def test_the_server_reuses_the_clis_connection_and_ids():
     import inspect
     source = inspect.getsource(server)
     assert "connect(" in source and "new_id(" in source and "read_token" not in source and "token_hex(5)" not in source
+
+
+def test_catchups_use_linked_wirk_before_optional_verification(mcp):
+    guidance = mcp.instructions() + " " + next(t.description for t in mcp.tools() if t.name == "wirk_status")
+    for trigger in ("catch-up", "what's left", "priorities", "blockers"):
+        assert trigger in guidance
+    for rule in ("direct MCP", "read-only", "no claim", "linked records", "implementation", "requested verification", "specific discrepancy", "unverified"):
+        assert rule in guidance

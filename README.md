@@ -10,7 +10,7 @@ One command installs the wirk command and this server, sets up Claude Code and C
 curl -fsSL https://wirk.life/install | sh
 ```
 
-By hand: `uv tool install wirk-mcp` (or the wheels attached to a [release](https://github.com/wirkspace/wirk-mcp/releases)), `wirk login`, then point your agent host at the installed binary:
+By hand: install the wheel attached to a [release](https://github.com/wirkspace/wirk-mcp/releases) (`uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.1/wirk_mcp-0.4.1-py3-none-any.whl`), run `wirk login`, then point your agent host at the installed binary. First check `claude mcp get wirk` or `codex mcp get wirk`: a server named wirk with another command is an earlier install. Replace it (Claude Code needs `claude mcp remove --scope user wirk` first; Codex's add replaces it), or skip the add when it already runs this binary:
 
 ```
 claude mcp add --scope user wirk -- "$(command -v wirk-mcp)"      # Claude Code
@@ -21,7 +21,7 @@ The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK
 
 ## Use
 
-An agent starts with `wirk_status`, optionally with a one-line `task`. `wirk_query` fetches by ID, short ID or exact title, lists with `fields`, finds what matters for the words in `about`, or looks up a `receipt`. `wirk_write` changes items and links in one batch, stating in `expect` the revision it read (`rN` on a card); completing wirk gives its evidence as `reason`. Context changes apply when the agent may make them; otherwise they are refused with `requires_review` and the agent proposes them. Only people decide proposals, so an agent's `wirk_review` is refused (`not_authorized` for its own proposal, `person_required` for any other); the person decides at their own terminal with `wirk review ID@N accept --reason WHY --person` (see the [wirk command](https://github.com/wirkspace/wirk-cli#for-people)). `wirk_show` makes a page a person can open; it is not live on api.wirk.life yet and answers `views_unavailable`. `format: "json"` returns data instead of text. `request_id` may be left out: the server makes one and names it, and resending the identical body with it applies once.
+An agent starts with `wirk_status`, optionally with a one-line `task`. `wirk_query` fetches by ID, short ID or exact title, lists with `fields`, finds what matters for the words in `about`, or looks up a `receipt`. `wirk_write` changes items and links in one batch, stating in `expect` the revision it read (`rN` on a card); completing wirk gives its evidence as `reason`. Context changes apply when the agent may make them; otherwise they are refused with `requires_review` and the agent proposes them. `wirk_review` accepts, rejects or defers proposals when the agent's role may review; a background agent only proposes. `wirk_show` makes a page a person can open; it is not live on api.wirk.life yet and answers `views_unavailable`. `format: "json"` returns data instead of text. `request_id` may be left out: the server makes one and names it, and resending the identical body with it applies once.
 
 ## What leaves the machine
 
