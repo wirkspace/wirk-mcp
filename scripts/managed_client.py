@@ -6,6 +6,7 @@ The release pipeline owns https://wirk.life/releases/current.json.
 """
 
 import fcntl
+import time
 import hashlib
 import json
 import os
@@ -19,21 +20,38 @@ from pathlib import Path
 
 MANIFEST = "https://wirk.life/releases/current.json"
 WHEEL_PREFIXES = {"cli": "wirk-", "mcp": "wirk_mcp-"}
+MAX_MANIFEST = 64 * 1024
+MAX_ASSET = 16 * 1024 * 1024
+DOWNLOAD_WAIT = 30
+INSTALL_WAIT = 120
+LOCK_WAIT = 10
 
 
-def fetch(url: str) -> bytes:
+def fetch(url: str, limit: int = MAX_ASSET) -> bytes:
     parsed = urllib.parse.urlparse(url)
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise ValueError("approved release URL contains forbidden components")
     if parsed.scheme != "https" and not (os.environ.get("WIRK_CLIENT_TEST_HOME") and parsed.scheme == "file"):
         raise ValueError("approved release asset must use HTTPS")
+    deadline = time.monotonic() + DOWNLOAD_WAIT
+    chunks = []
+    size = 0
     with urllib.request.urlopen(url, timeout=10) as response:
-        return response.read()
+        while True:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("approved release download timed out")
+            chunk = response.read(min(65536, limit + 1 - size))
+            if not chunk:
+                return b"".join(chunks)
+            size += len(chunk)
+            if size > limit:
+                raise ValueError("approved release download is too large")
+            chunks.append(chunk)
 
 
 def approved_manifest() -> dict:
     url = os.environ.get("WIRK_CLIENT_TEST_MANIFEST", MANIFEST)
-    data = json.loads(fetch(url))
+    data = json.loads(fetch(url, MAX_MANIFEST))
     if data.get("schema") != 1 or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", data.get("release_id", "")):
         raise ValueError("invalid approved release manifest")
     for key in ("cli", "mcp", "skill"):
@@ -47,6 +65,41 @@ def approved_manifest() -> dict:
     return data
 
 
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(65536), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def installed_versions(release: Path) -> list[str]:
+    return subprocess.check_output([str(release / "venv/bin/python"), "-c",
+        "import importlib.metadata as m; print(m.version('wirk'), m.version('wirk-mcp'))"],
+        text=True, timeout=INSTALL_WAIT).split()
+
+
+def validate_cache(release: Path, manifest: dict, receipt: dict) -> None:
+    if receipt.get("manifest") != manifest:
+        raise ValueError("approved release ID was reused with different contents")
+    files = {"skill": release / "skill/SKILL.md"}
+    for key, prefix in WHEEL_PREFIXES.items():
+        name = Path(urllib.parse.urlparse(manifest[key]["url"]).path).name
+        if not name.startswith(prefix):
+            raise ValueError(f"wrong {key} artifact name")
+        files[key] = release / "wheels" / name
+    for key, path in files.items():
+        if sha256(path) != manifest[key]["sha256"]:
+            raise ValueError(f"cached {key} hash mismatch")
+    for name, expected in receipt.get("executables", {}).items():
+        if sha256(release / "venv/bin" / name) != expected:
+            raise ValueError(f"cached {name} executable hash mismatch")
+    if set(receipt.get("executables", {})) != {"wirk", "wirk-mcp"}:
+        raise ValueError("cached executable receipt is incomplete")
+    if installed_versions(release) != [manifest["cli"]["version"], manifest["mcp"]["version"]]:
+        raise ValueError("cached WIRK versions differ from approved release")
+
+
 def stage(home: Path, manifest: dict) -> Path:
     releases = home / "releases"
     releases.mkdir(parents=True, exist_ok=True)
@@ -54,8 +107,7 @@ def stage(home: Path, manifest: dict) -> Path:
     receipt = release / "manifest.json"
     if release.exists():
         if receipt.exists():
-            if json.loads(receipt.read_text()) != manifest:
-                raise ValueError("approved release ID was reused with different contents")
+            validate_cache(release, manifest, json.loads(receipt.read_text()))
             return release
         shutil.rmtree(release)  # an interrupted stage was never activated
     release.mkdir()
@@ -81,17 +133,17 @@ def stage(home: Path, manifest: dict) -> Path:
                 wheel.write_bytes(content)
                 wheels.append(wheel)
         venv = release / "venv"
-        subprocess.run(["uv", "venv", "--python", "3.12", str(venv)], check=True, stdout=subprocess.DEVNULL)
+        subprocess.run(["uv", "venv", "--python", "3.12", str(venv)], check=True, stdout=subprocess.DEVNULL, timeout=INSTALL_WAIT)
         subprocess.run(["uv", "pip", "install", "--python", str(venv / "bin/python"),
-                        *(str(wheel) for wheel in wheels)], check=True, stdout=subprocess.DEVNULL)
-        versions = subprocess.check_output([str(venv / "bin/python"), "-c",
-            "import importlib.metadata as m; print(m.version('wirk'), m.version('wirk-mcp'))"], text=True).split()
+                        *(str(wheel) for wheel in wheels)], check=True, stdout=subprocess.DEVNULL, timeout=INSTALL_WAIT)
+        versions = installed_versions(release)
         if versions != [manifest["cli"]["version"], manifest["mcp"]["version"]]:
             raise ValueError("installed WIRK versions differ from approved release")
         skill = (release / "skill/SKILL.md").read_text()
         if "Only people decide proposals" in skill or "Background agents never decide" not in skill:
             raise ValueError("approved skill has obsolete review authority guidance")
-        receipt.write_text(json.dumps(manifest, sort_keys=True))
+        executables = {name: sha256(venv / "bin" / name) for name in ("wirk", "wirk-mcp")}
+        receipt.write_text(json.dumps({"manifest": manifest, "executables": executables}, sort_keys=True))
         os.chmod(receipt, 0o600)
         return release
     except Exception:
@@ -118,7 +170,15 @@ def main() -> None:
     home.mkdir(parents=True, exist_ok=True)
     with (home / ".update.lock").open("a+b") as lock:
         os.chmod(lock.name, 0o600)
-        fcntl.flock(lock, fcntl.LOCK_EX)
+        deadline = time.monotonic() + LOCK_WAIT
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("approved release update lock timed out")
+                time.sleep(0.1)
         release = stage(home, manifest)
         activate(home, release)
     os.execv(str(home / "current/venv/bin" / name), [name, *sys.argv[1:]])
@@ -127,6 +187,6 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
         print(f"WIRK approved client unavailable: {error}", file=sys.stderr)
         sys.exit(1)

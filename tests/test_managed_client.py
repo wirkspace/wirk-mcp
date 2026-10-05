@@ -19,12 +19,26 @@ def file_asset(path):
 @pytest.fixture(scope="module")
 def assets(tmp_path_factory):
     base = tmp_path_factory.mktemp("client-assets")
-    cli = ROOT.parent / "wirk-cli"
+    cli = base / "cli-project"
+    (cli / "src/wirk_cli").mkdir(parents=True)
+    (cli / "src/wirk_cli/__init__.py").write_text("def main():\n    print('wirk 0.4.1')\n")
+    (cli / "pyproject.toml").write_text("""[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+[project]
+name = "wirk"
+version = "0.4.1"
+requires-python = ">=3.12"
+[project.scripts]
+wirk = "wirk_cli:main"
+[tool.hatch.build.targets.wheel]
+packages = ["src/wirk_cli"]
+""")
     for project in (cli, ROOT):
         subprocess.run(["uv", "build", "--wheel", "--out-dir", str(base), str(project)], check=True,
                        capture_output=True, text=True)
     skill = base / "SKILL.md"
-    skill.write_bytes((ROOT.parent / "wirk-skill/skills/wirk/SKILL.md").read_bytes())
+    skill.write_text("---\nname: wirk\n---\nBackground agents never decide.\n")
     return {"cli": file_asset(base / "wirk-0.4.1-py3-none-any.whl"),
             "mcp": file_asset(base / "wirk_mcp-0.4.1-py3-none-any.whl"), "skill": file_asset(skill)}
 
@@ -75,3 +89,86 @@ def test_failed_update_preserves_current_set_and_modes(tmp_path, assets, failure
     assert "WIRK approved client unavailable" in result.stderr
     assert (home / "current").resolve() == before
     assert stat.S_IMODE((before / "manifest.json").stat().st_mode) == mode
+
+
+def test_tampered_cached_skill_is_rejected_before_exec(tmp_path, assets):
+    approved = {"schema": 1, "release_id": "test-041", **assets}
+    result, home = run(tmp_path, approved)
+    assert result.returncode == 0, result.stderr
+    current = (home / "current").resolve()
+    (current / "skill/SKILL.md").write_text("altered")
+    result, home = run(tmp_path, approved)
+    assert result.returncode != 0
+    assert "cached" in result.stderr.lower() or "hash mismatch" in result.stderr.lower()
+    assert (home / "current").resolve() == current
+
+
+def test_tampered_cached_executable_is_rejected_before_exec(tmp_path, assets):
+    approved = {"schema": 1, "release_id": "test-041", **assets}
+    result, home = run(tmp_path, approved)
+    assert result.returncode == 0, result.stderr
+    current = (home / "current").resolve()
+    executable = current / "venv/bin/wirk-mcp"
+    executable.write_text("altered")
+    result, home = run(tmp_path, approved)
+    assert result.returncode != 0
+    assert "cached" in result.stderr.lower() or "hash mismatch" in result.stderr.lower()
+    assert (home / "current").resolve() == current
+
+
+def test_oversized_asset_preserves_current_release(tmp_path, assets):
+    first = {"schema": 1, "release_id": "test-041", **assets}
+    result, home = run(tmp_path, first)
+    assert result.returncode == 0, result.stderr
+    before = (home / "current").resolve()
+    oversized = tmp_path / "SKILL.md"
+    oversized.write_bytes(b"x" * (16 * 1024 * 1024 + 1))
+    next_release = json.loads(json.dumps(first))
+    next_release["release_id"] = "test-042"
+    next_release["skill"] = file_asset(oversized)
+    result, home = run(tmp_path, next_release)
+    assert result.returncode != 0 and "too large" in result.stderr
+    assert (home / "current").resolve() == before
+
+
+def test_install_timeout_cleans_stage_and_preserves_current(tmp_path, assets, monkeypatch):
+    first = {"schema": 1, "release_id": "test-041", **assets}
+    result, home = run(tmp_path, first)
+    assert result.returncode == 0, result.stderr
+    before = (home / "current").resolve()
+    import importlib.util
+    script = ROOT / "scripts/managed_client.py"
+    spec = importlib.util.spec_from_file_location("managed_client", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    monkeypatch.setenv("WIRK_CLIENT_TEST_HOME", str(home))
+    next_release = {**first, "release_id": "test-042"}
+    def timeout(args, **kwargs):
+        assert kwargs["timeout"] == module.INSTALL_WAIT
+        raise subprocess.TimeoutExpired(args, module.INSTALL_WAIT)
+    monkeypatch.setattr(module.subprocess, "run", timeout)
+    with pytest.raises(subprocess.TimeoutExpired):
+        module.stage(home, next_release)
+    assert (home / "current").resolve() == before
+    assert not (home / "releases/test-042").exists()
+
+
+def test_update_lock_wait_is_bounded(tmp_path, assets, monkeypatch):
+    import fcntl
+    import importlib.util
+    script = ROOT / "scripts/managed_client.py"
+    spec = importlib.util.spec_from_file_location("managed_client_lock", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    home = tmp_path / "client-home"
+    home.mkdir()
+    approved = tmp_path / "approved.json"
+    approved.write_text(json.dumps({"schema": 1, "release_id": "test-041", **assets}))
+    monkeypatch.setenv("WIRK_CLIENT_TEST_HOME", str(home))
+    monkeypatch.setenv("WIRK_CLIENT_TEST_MANIFEST", approved.as_uri())
+    monkeypatch.setattr(module, "LOCK_WAIT", 0)
+    monkeypatch.setattr(module.sys, "argv", ["wirk", "--version"])
+    with (home / ".update.lock").open("a+b") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with pytest.raises(TimeoutError, match="lock timed out"):
+            module.main()
