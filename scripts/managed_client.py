@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import re
+import signal
 import shutil
 import subprocess
 import sys
@@ -33,20 +34,26 @@ def fetch(url: str, limit: int = MAX_ASSET) -> bytes:
         raise ValueError("approved release URL contains forbidden components")
     if parsed.scheme != "https" and not (os.environ.get("WIRK_CLIENT_TEST_HOME") and parsed.scheme == "file"):
         raise ValueError("approved release asset must use HTTPS")
-    deadline = time.monotonic() + DOWNLOAD_WAIT
-    chunks = []
-    size = 0
-    with urllib.request.urlopen(url, timeout=10) as response:
-        while True:
-            if time.monotonic() >= deadline:
-                raise TimeoutError("approved release download timed out")
-            chunk = response.read(min(65536, limit + 1 - size))
-            if not chunk:
-                return b"".join(chunks)
-            size += len(chunk)
-            if size > limit:
-                raise ValueError("approved release download is too large")
-            chunks.append(chunk)
+    def timed_out(_signal, _frame):
+        raise TimeoutError("approved release download timed out")
+
+    previous_handler = signal.signal(signal.SIGALRM, timed_out)
+    previous_timer = signal.setitimer(signal.ITIMER_REAL, DOWNLOAD_WAIT)
+    try:
+        chunks = []
+        size = 0
+        with urllib.request.urlopen(url, timeout=min(10, DOWNLOAD_WAIT)) as response:
+            while True:
+                chunk = response.read(min(65536, limit + 1 - size))
+                if not chunk:
+                    return b"".join(chunks)
+                size += len(chunk)
+                if size > limit:
+                    raise ValueError("approved release download is too large")
+                chunks.append(chunk)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, *previous_timer)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 
 def approved_manifest() -> dict:
@@ -70,6 +77,19 @@ def sha256(path: Path) -> str:
     with path.open("rb") as source:
         for block in iter(lambda: source.read(65536), b""):
             digest.update(block)
+    return digest.hexdigest()
+
+
+def package_hash(release: Path, package: str) -> str:
+    matches = list((release / "venv/lib").glob(f"python*/site-packages/{package}"))
+    if len(matches) != 1:
+        raise ValueError(f"installed {package} package missing")
+    digest = hashlib.sha256()
+    root = matches[0]
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
+            digest.update(str(path.relative_to(root)).encode() + b"\0")
+            digest.update(bytes.fromhex(sha256(path)))
     return digest.hexdigest()
 
 
@@ -97,6 +117,12 @@ def validate_cache(release: Path, manifest: dict, receipt: dict) -> None:
     for name, expected in executables.items():
         if sha256(release / "venv/bin" / name) != expected:
             raise ValueError(f"cached {name} executable hash mismatch")
+    packages = receipt.get("packages", {})
+    if set(packages) != {"wirk_cli", "wirk_mcp"}:
+        raise ValueError("cached package receipt is incomplete")
+    for name, expected in packages.items():
+        if package_hash(release, name) != expected:
+            raise ValueError(f"cached {name} package hash mismatch")
     if installed_versions(release) != [manifest["cli"]["version"], manifest["mcp"]["version"]]:
         raise ValueError("cached WIRK versions differ from approved release")
 
@@ -110,7 +136,9 @@ def stage(home: Path, manifest: dict) -> Path:
         if receipt.exists():
             validate_cache(release, manifest, json.loads(receipt.read_text()))
             return release
-        shutil.rmtree(release)  # an interrupted stage was never activated
+        if (home / "current").is_symlink() and (home / "current").resolve() == release:
+            raise ValueError("active release receipt is missing")
+        shutil.rmtree(release)  # an interrupted inactive stage was never activated
     release.mkdir()
     try:
         wheels = []
@@ -141,7 +169,8 @@ def stage(home: Path, manifest: dict) -> Path:
         if versions != [manifest["cli"]["version"], manifest["mcp"]["version"]]:
             raise ValueError("installed WIRK versions differ from approved release")
         executables = {name: sha256(venv / "bin" / name) for name in ("wirk", "wirk-mcp")}
-        receipt.write_text(json.dumps({"manifest": manifest, "executables": executables}, sort_keys=True))
+        packages = {name: package_hash(release, name) for name in ("wirk_cli", "wirk_mcp")}
+        receipt.write_text(json.dumps({"manifest": manifest, "executables": executables, "packages": packages}, sort_keys=True))
         os.chmod(receipt, 0o600)
         return release
     except Exception:

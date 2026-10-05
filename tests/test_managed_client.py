@@ -174,21 +174,78 @@ def test_update_lock_wait_is_bounded(tmp_path, assets, monkeypatch):
             module.main()
 
 
-def test_download_deadline_stops_a_trickling_response(monkeypatch):
+def test_real_https_trickle_obeys_total_download_deadline(tmp_path, monkeypatch):
+    import http.server
     import importlib.util
+    import shutil
+    import ssl
+    import threading
+    import time
+    import urllib.request
+
+    if not shutil.which("openssl"):
+        pytest.skip("openssl needed for local HTTPS fixture")
+    cert, key = tmp_path / "cert.pem", tmp_path / "key.pem"
+    subprocess.run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "1",
+                    "-subj", "/CN=localhost", "-keyout", str(key), "-out", str(cert)],
+                   check=True, capture_output=True, timeout=30)
+    class Trickler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Length", "20")
+            self.end_headers()
+            try:
+                for _ in range(20):
+                    self.wfile.write(b"x")
+                    self.wfile.flush()
+                    time.sleep(0.05)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+        def log_message(self, *_):
+            pass
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Trickler)
+    tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    tls.load_cert_chain(cert, key)
+    server.socket = tls.wrap_socket(server.socket, server_side=True)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
     script = ROOT / "scripts/managed_client.py"
-    spec = importlib.util.spec_from_file_location("managed_client_download", script)
+    spec = importlib.util.spec_from_file_location("managed_client_tls", script)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    class SlowResponse:
-        def __enter__(self):
-            return self
-        def __exit__(self, *_):
-            pass
-        def read(self, _):
-            return b"x"
-    monkeypatch.setattr(module.urllib.request, "urlopen", lambda _, timeout: SlowResponse())
-    ticks = iter([0, 0, module.DOWNLOAD_WAIT + 1])
-    monkeypatch.setattr(module.time, "monotonic", lambda: next(ticks))
-    with pytest.raises(TimeoutError, match="download timed out"):
-        module.fetch("https://wirk.life/test")
+    original = urllib.request.urlopen
+    monkeypatch.setattr(module.urllib.request, "urlopen", lambda url, timeout: original(
+        url, timeout=timeout, context=ssl._create_unverified_context()))
+    monkeypatch.setattr(module, "DOWNLOAD_WAIT", 0.1)
+    start = time.monotonic()
+    try:
+        with pytest.raises(TimeoutError):
+            module.fetch(f"https://127.0.0.1:{server.server_port}/asset")
+        assert time.monotonic() - start < 0.4
+    finally:
+        server.shutdown()
+
+
+def test_tampered_installed_package_is_rejected(tmp_path, assets):
+    approved = {"schema": 1, "release_id": "test-041", **assets}
+    result, home = run(tmp_path, approved)
+    assert result.returncode == 0, result.stderr
+    current = (home / "current").resolve()
+    package = next((current / "venv/lib").glob("python*/site-packages/wirk_cli/__init__.py"))
+    package.write_text("def main():\n    print('altered code')\n")
+    result, home = run(tmp_path, approved)
+    assert result.returncode != 0
+    assert (home / "current").resolve() == current
+
+
+def test_missing_active_receipt_never_deletes_current_release(tmp_path, assets):
+    approved = {"schema": 1, "release_id": "test-041", **assets}
+    result, home = run(tmp_path, approved)
+    assert result.returncode == 0, result.stderr
+    current = (home / "current").resolve()
+    (current / "manifest.json").unlink()
+    broken = json.loads(json.dumps(approved))
+    broken["skill"]["url"] = (tmp_path / "missing.md").as_uri()
+    result, home = run(tmp_path, broken)
+    assert result.returncode != 0
+    assert (home / "current").resolve() == current
+    assert (home / "current").exists()

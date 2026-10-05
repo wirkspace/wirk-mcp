@@ -20,7 +20,7 @@ jobs:
           GIT_TERMINAL_PROMPT: "0"
         run: |
           python -m pip install "wirk @ https://github.com/wirkspace/wirk-cli/releases/download/$GITHUB_REF_NAME/wirk-${GITHUB_REF_NAME#v}-py3-none-any.whl"
-          python -m pip install ".[test]" build
+          python -m pip install ".[test]" build uv
           python -m pytest tests -q -rs
       - run: python -m build
       - name: SHA-256 sums of what is released

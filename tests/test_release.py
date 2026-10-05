@@ -57,3 +57,8 @@ def test_the_readme_by_hand_path_replaces_an_earlier_install():
     assert "uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.1/wirk_mcp-0.4.1-py3-none-any.whl" in text
     assert "claude mcp remove --scope user wirk" in text
     assert text.index("mcp get wirk") < text.index("claude mcp add")
+
+
+def test_release_installs_uv_for_managed_client_fixtures():
+    workflow = (ROOT / ".github/workflows/release.yml").read_text()
+    assert 'pip install ".[test]" build uv' in workflow
