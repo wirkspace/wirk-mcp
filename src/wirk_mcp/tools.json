@@ -71,7 +71,8 @@
       "type": "integer"
      },
      "max_bytes": {
-      "type": "integer"
+      "type": "integer",
+      "description": "1024–65536; default set by depth"
      },
      "cursor": {
       "type": "string"

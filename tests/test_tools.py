@@ -209,3 +209,10 @@ def test_the_server_reuses_the_clis_connection_and_ids():
     import inspect
     source = inspect.getsource(server)
     assert "connect(" in source and "new_id(" in source and "read_token" not in source and "token_hex(5)" not in source
+
+
+def test_query_max_bytes_states_its_range_and_default(mcp):
+    """wirk-core #36: an agent learns max_bytes' bounds and that its default follows the depth, within the size budget."""
+    query = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_query")
+    described = query["inputSchema"]["properties"]["max_bytes"].get("description", "")
+    assert "1024–65536" in described and "depth" in described
