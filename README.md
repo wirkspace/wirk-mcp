@@ -38,3 +38,11 @@ A `v*` tag matching `pyproject.toml`'s version tests against the `wirk` release 
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+### Automated publication
+
+Push the exact reviewed version tags for the CLI, MCP and skill. Each existing Release workflow then tests and publishes its component; MCP and skill wait up to ten minutes for the matching CLI wheel and its identical PyPI distribution. Tags choose reviewed source; pushing main does not publish a release.
+
+New GitHub releases stay prereleases until their downloaded public bytes match the build and a clean public installation passes. The shared publication workflow is pinned to an exact revision. Failures appear in Actions. Retry failed jobs to reuse the successful build artifacts: identical existing assets are retained, missing assets are uploaded, and differing bytes or a moved tag stop the run. Do not overwrite a published asset to make a retry pass.
+
+The Release workflow's manual verification input checks an existing public tag without publishing. This publication automation does not update already-installed or running clients.
