@@ -32,7 +32,7 @@ jobs:
         env:
           GIT_TERMINAL_PROMPT: "0"
         run: |
-          curl --fail --location --retry 3 --max-time 120 https://raw.githubusercontent.com/wirkspace/wirk-cli/393f2620f1e5145c39192ea14d03b2a5767ed368/scripts/release_assets.py --output "$RUNNER_TEMP/release_assets.py"
+          curl --fail --location --retry 3 --max-time 120 https://raw.githubusercontent.com/wirkspace/wirk-cli/9fa7381d4e437f8a9d4b386a410e06ba0803b0a6/scripts/release_assets.py --output "$RUNNER_TEMP/release_assets.py"
           python "$RUNNER_TEMP/release_assets.py" wait-cli --tag "$GITHUB_REF_NAME" --dest "$RUNNER_TEMP/public-cli"
       - name: Test against the matching public CLI wheel
         env:
@@ -53,14 +53,14 @@ jobs:
     needs: build
     permissions:
       contents: write
-    uses: wirkspace/wirk-cli/.github/workflows/publish-release.yml@393f2620f1e5145c39192ea14d03b2a5767ed368
+    uses: wirkspace/wirk-cli/.github/workflows/publish-release.yml@9fa7381d4e437f8a9d4b386a410e06ba0803b0a6
     with:
       kind: mcp
   verify:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     permissions:
       contents: read
-    uses: wirkspace/wirk-cli/.github/workflows/publish-release.yml@393f2620f1e5145c39192ea14d03b2a5767ed368
+    uses: wirkspace/wirk-cli/.github/workflows/publish-release.yml@9fa7381d4e437f8a9d4b386a410e06ba0803b0a6
     with:
       kind: mcp
       verify_tag: ${{ inputs.verify_tag }}
@@ -81,7 +81,7 @@ jobs:
       - name: Check existing PyPI distributions before retrying publication
         id: prepare
         run: |
-          curl --fail --location --retry 3 --max-time 120 https://raw.githubusercontent.com/wirkspace/wirk-cli/393f2620f1e5145c39192ea14d03b2a5767ed368/scripts/release_assets.py --output "$RUNNER_TEMP/release_assets.py"
+          curl --fail --location --retry 3 --max-time 120 https://raw.githubusercontent.com/wirkspace/wirk-cli/9fa7381d4e437f8a9d4b386a410e06ba0803b0a6/scripts/release_assets.py --output "$RUNNER_TEMP/release_assets.py"
           python "$RUNNER_TEMP/release_assets.py" pypi-prepare --kind mcp --tag "$GITHUB_REF_NAME" --dist dist --dest pypi-dist
       - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         if: ${{ steps.prepare.outputs.pending == 'true' }}
