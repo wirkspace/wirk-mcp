@@ -54,6 +54,8 @@ def call(name: str, arguments: dict, client: types.Implementation | None) -> tup
             failure.hint = (f"Resend the identical arguments with request_id {body['request_id']}: it applies once or "
                             f"returns the stored receipt. Or call wirk_query with receipt {body['request_id']}.")
         return failure.text(), True
+    if "notifications" in answer:  # messages for you come last, as text ends with them
+        answer["notifications"] = answer.pop("notifications")
     text = json.dumps(answer, ensure_ascii=False) if body["format"] == "json" else answer.get("text") or problem_text(answer)
     return text, not answer["ok"]
 
