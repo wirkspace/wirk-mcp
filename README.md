@@ -10,7 +10,7 @@ One command installs the wirk command and this server, sets up Claude Code and C
 curl -fsSL https://wirk.life/install | sh
 ```
 
-By hand: install the wheel attached to a [release](https://github.com/wirkspace/wirk-mcp/releases) (`uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.0/wirk_mcp-0.4.0-py3-none-any.whl`), run `wirk login`, then point your agent host at the installed binary. First check `claude mcp get wirk` or `codex mcp get wirk`: a server named wirk with another command is an earlier install. Replace it (Claude Code needs `claude mcp remove --scope user wirk` first; Codex's add replaces it), or skip the add when it already runs this binary:
+By hand: install the wheel attached to a [release](https://github.com/wirkspace/wirk-mcp/releases) (`uv tool install https://github.com/wirkspace/wirk-mcp/releases/download/v0.4.2/wirk_mcp-0.4.2-py3-none-any.whl`), run `wirk login`, then point your agent host at the installed binary. First check `claude mcp get wirk` or `codex mcp get wirk`: a server named wirk with another command is an earlier install. Replace it (Claude Code needs `claude mcp remove --scope user wirk` first; Codex's add replaces it), or skip the add when it already runs this binary:
 
 ```
 claude mcp add --scope user wirk -- "$(command -v wirk-mcp)"      # Claude Code
