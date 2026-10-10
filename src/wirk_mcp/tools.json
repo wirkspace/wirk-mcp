@@ -200,7 +200,7 @@
   },
   {
    "name": "wirk_show",
-   "description": "Not live yet on api.wirk.life: answers views_unavailable. A live read-only page for a person, from the preset status or a view config; returns its link. Anyone with the link can open it until it expires.",
+   "description": "A live read-only page for a person, from the preset status or a view config; returns its link. Anyone with the link can open it until it expires after 24 hours.",
    "inputSchema": {
     "type": "object",
     "additionalProperties": false,
