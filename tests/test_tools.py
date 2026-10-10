@@ -60,10 +60,9 @@ def test_agent_text_says_who_decides_what_is_live_and_what_refusals_mean(mcp):
 def test_agents_claim_wirk_before_starting_it(mcp):
     """Samuel, 5 October: claim before starting, so agents sharing one principal don't pick up the same work."""
     text = mcp.instructions()
-    assert "Before starting wirk, fetch it" in text and "claimed by another session" in text
-    assert "status in_progress, owner me" in text and "your session, branch and files" in text
-    assert "a first line above the old body" in text  # body replaces the whole body: keep the description
-    assert "leave it and say so" in text and "not a lock" in text
+    assert "Fetch before work" in text and "leave in_progress or other claims alone" in text
+    assert "Claim in_progress, owner me" in text and "session, branch and files" in text
+    assert "above the old body as a reservation" in text  # preserve the body; a claim is not a lock
 
 
 def test_meaning_ranking_names_pro_and_expect_names_parent_work(mcp):
@@ -194,7 +193,7 @@ def test_privacy_wording_and_no_v1():
 def test_the_package_pins_the_tested_cli():
     import tomllib
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-    assert "wirk==0.4.5" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
+    assert "wirk==0.4.6" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
 
 
 def test_an_unknown_outcome_is_worded_for_mcp(mcp):
@@ -226,7 +225,7 @@ def test_messages_are_described_and_their_footer_comes_last(mcp):
     assert "{op:message.acknowledge, messages:[ID]}" in operations
     fields = tools["wirk_query"]["inputSchema"]["properties"]["fields"]["description"]
     assert "message" in fields and "inbox=me" in fields and "participant" in fields
-    assert "the sender in to" in mcp.instructions() and "message.acknowledge" in mcp.instructions()
+    assert "sender in to" in mcp.instructions() and "message.acknowledge" in mcp.instructions()
     assert "received, not agreed" in mcp.instructions()
     footer = {"state": "available", "pending": 1, "messages": []}
 
@@ -241,4 +240,4 @@ def test_the_inbox_is_the_boards_of_your_work_and_your_own_handoff_stays_unseen(
     """Decision 91: one mark clears a message for every conversation of a shared principal, so mark seen only what you
     acted on; the inbox is your messages and the boards of the items you hold."""
     text = mcp.instructions()
-    assert "boards of the items you hold" in text and "what you acted on, never your own handoff" in text
+    assert "sent to you or on held-item boards" in text and "what you acted on, never your own handoff" in text
