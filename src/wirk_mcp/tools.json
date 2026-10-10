@@ -50,7 +50,7 @@
      },
      "fields": {
       "type": "object",
-      "description": "Filters, e.g. {\"status\": [\"open\", \"in_progress\"], \"kind\": \"work\", \"owner\": \"me\", \"text\": \"exact words\", \"linked\": \"ID\", \"changed_days\": 7}; kind is work, context, folder or doc; state is an initiative's; proposal=[\"proposed\"] lists proposals."
+      "description": "Filters, e.g. {\"status\": [\"open\", \"in_progress\"], \"kind\": \"work\", \"owner\": \"me\", \"text\": \"exact words\", \"linked\": \"ID\", \"changed_days\": 7}; kind: work, context, folder, record; state is an initiative's; proposal=[\"proposed\"] lists proposals."
      },
      "receipt": {
       "type": "string",
