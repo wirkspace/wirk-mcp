@@ -216,3 +216,22 @@ def test_query_max_bytes_states_its_range_and_default(mcp):
     query = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_query")
     described = query["inputSchema"]["properties"]["max_bytes"].get("description", "")
     assert "1024–65536" in described and "depth" in described
+
+
+def test_messages_are_described_and_their_footer_comes_last(mcp):
+    """docs/plans/messaging.md §8: the two operations, the filters, and notifications printed last in JSON."""
+    tools = {t["name"]: t for t in definitions(mcp.tools())}
+    operations = tools["wirk_write"]["inputSchema"]["properties"]["operations"]["description"]
+    assert "{op:message.send, ref?, data:{body, title?, to?:[principal], reply_to?}}" in operations
+    assert "{op:message.acknowledge, messages:[ID]}" in operations
+    fields = tools["wirk_query"]["inputSchema"]["properties"]["fields"]["description"]
+    assert "message" in fields and "inbox=me" in fields and "participant" in fields
+    assert "the sender in to" in mcp.instructions() and "message.acknowledge" in mcp.instructions()
+    assert "received, not agreed" in mcp.instructions()
+    footer = {"state": "available", "pending": 1, "messages": []}
+
+    def answer(request):
+        return httpx.Response(200, json={"notifications": footer, **envelope(data={"cards": []}).json()})
+    result, requests = mcp.call("wirk_query", {"fields": {"inbox": "me"}, "format": "json"}, answer)
+    printed = json.loads(result.content[0].text)
+    assert list(printed)[-1] == "notifications" and printed["notifications"] == footer
