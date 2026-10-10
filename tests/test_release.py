@@ -12,8 +12,8 @@ ROOT = Path(__file__).parent.parent
 def test_depends_on_the_wirk_package_by_name():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
     assert project["name"] == "wirk-mcp"
-    assert "wirk==0.4.5" in project["dependencies"]  # the CLI this server was tested with, published as wirk
-    assert project["version"] == __import__("wirk_mcp").__version__ == "0.4.5"
+    assert "wirk==0.4.6" in project["dependencies"]  # the CLI this server was tested with, published as wirk
+    assert project["version"] == __import__("wirk_mcp").__version__ == "0.4.6"
     assert not any("git+" in dependency for dependency in project["dependencies"])  # PyPI refuses direct references
 
 
@@ -41,7 +41,7 @@ def test_the_readme_gives_the_sites_install_command():
 
 def test_ci_installs_the_pinned_cli():
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
-    assert 'pip install "wirk==0.4.5"' in ci
+    assert 'pip install "wirk==0.4.6"' in ci
 
 
 def test_the_readme_by_hand_path_works_beside_an_earlier_install():

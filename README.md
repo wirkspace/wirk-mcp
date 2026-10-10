@@ -30,6 +30,8 @@ The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK
 
 ## Use
 
+For catch-ups about status, priorities or blockers, use `wirk_status` for breadth. Batch a few visible work and decision leads in the first `wirk_query`, then follow selected links or truncated details in the next before naming specific blockers, owners or next work. Cards and counts are leads; stop when evidence suffices and name gaps. Catch-ups are read-only. Check the repository or external sources for implementation, requested verification or a specific discrepancy; old handoffs and age do not establish release or worker state. Direct MCP is preferred; the CLI also works.
+
 An agent starts with `wirk_status`, optionally with a one-line `task`. `wirk_query` fetches by ID, short ID or exact title, lists with `fields`, finds what matters for the words in `about`, or looks up a `receipt`. `wirk_write` changes items and links in one batch, stating in `expect` the revision it read (`rN` on a card); completing wirk gives its evidence as `reason`. Context changes apply when the agent may make them; otherwise they are refused with `requires_review` and the agent proposes them. `wirk_review` accepts, rejects or defers proposals when the agent's role may review; a background agent only proposes. `wirk_show` returns a link to a live, read-only page for a person; anyone with the link can open it until it expires after 24 hours. `format: "json"` returns data instead of text. `request_id` may be left out: the server makes one and names it, and resending the identical body with it applies once.
 
 ## What leaves the machine
