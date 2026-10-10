@@ -173,7 +173,7 @@ ROOT = Path(__file__).parent.parent
 PRIVATE = ["/Us" "ers/", r"\b(?:wsp|item|change|proposal|link|acc)_[0-9a-f]{32}\b", "Co-Auth" "ored-By",
            "Cla" "ude(?! Code)", "Anthr" "opic", r"\bOpus\b", r"\bSonnet\b", r"\bFable\b",
            r"[A-Za-z0-9._%+-]+@(?![A-Za-z0-9.-]*(?:example\.|wirk\.life))[A-Za-z0-9.-]+\.[a-z]{2,}"]
-WORDING = [r"\bworkspace\b(?!_id)", r"\bwork item", r"kind=wirk", r"· wirk ·", r"\bsteward(?!_id)"]
+WORDING = [r"\bworkspace\b(?!_id)", r"\bwork item", r"kind=wirk", r"· wirk ·", r"\bsteward(?!_id)", r"\bdoc\b"]
 
 
 def test_privacy_wording_and_no_v1():
