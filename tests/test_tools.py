@@ -235,3 +235,10 @@ def test_messages_are_described_and_their_footer_comes_last(mcp):
     result, requests = mcp.call("wirk_query", {"fields": {"inbox": "me"}, "format": "json"}, answer)
     printed = json.loads(result.content[0].text)
     assert list(printed)[-1] == "notifications" and printed["notifications"] == footer
+
+
+def test_the_inbox_is_the_boards_of_your_work_and_your_own_handoff_stays_unseen(mcp):
+    """Decision 91: one mark clears a message for every conversation of a shared principal, so mark seen only what you
+    acted on; the inbox is your messages and the boards of the items you hold."""
+    text = mcp.instructions()
+    assert "boards of the items you hold" in text and "what you acted on, never your own handoff" in text
