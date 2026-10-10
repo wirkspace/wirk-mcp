@@ -51,7 +51,7 @@ def test_agent_text_says_who_decides_what_is_live_and_what_refusals_mean(mcp):
     assert "wirk_review when your role may review" in mcp.instructions() and "only people" not in mcp.instructions().lower()
     assert "Anyone whose role may review decides" in tools["wirk_review"] and "never decides" in tools["wirk_review"]
     assert "person_required" not in tools["wirk_review"] and "not_authorized" in tools["wirk_review"]
-    assert tools["wirk_show"].startswith("Not live yet") and "views_unavailable" in tools["wirk_show"]
+    assert "Not live yet" not in tools["wirk_show"] and "views_unavailable" not in tools["wirk_show"]
     assert "when you may make" in tools["wirk_write"] and "requires_review" in tools["wirk_write"]
     assert "basis_changed" in tools["wirk_write"]
     assert "quotation_mismatch" in json.dumps(definitions(mcp.tools()))
