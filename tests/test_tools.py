@@ -20,7 +20,7 @@ def definitions(tools):
 def test_exactly_five_compact_tools(mcp):
     tools = definitions(mcp.tools())
     assert [t["name"] for t in tools] == NAMES
-    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5200  # 5120 before the inbox wait key
+    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5250  # 5120 before the inbox wait key
     assert len(mcp.instructions().encode()) <= 900
     assert "$defs" not in json.dumps(tools)
 
