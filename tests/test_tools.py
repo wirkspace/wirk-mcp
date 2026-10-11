@@ -248,3 +248,14 @@ def test_query_wait_is_described_with_its_range(mcp):
     query = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_query")
     described = query["inputSchema"]["properties"]["wait"]["description"]
     assert "inbox=me" in described and "0–60" in described and query["inputSchema"]["properties"]["wait"]["type"] == "integer"
+
+
+def test_query_fetch_takes_the_apis_object_form_beside_strings(mcp):
+    """2c355356's blind trial: a file's text is read through the API's fetch object with a select, which the server
+    already passes through; the schema now admits it, and the body on the wire is what the CLI's --request sends."""
+    fetch = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_query")["inputSchema"]["properties"]["fetch"]
+    assert {"type": "string"} in fetch["items"]["anyOf"] and {"type": "object"} in fetch["items"]["anyOf"]
+    assert "{ref, revision, select}" in fetch["description"]
+    body = {"ref": "5c1e7a90", "revision": 2, "select": [{"type": "whole", "part": {"type": "file", "file_id": "f1"}}]}
+    result, requests = mcp.call("wirk_query", {"fetch": [body, "6a0d2e83@3"], "format": "json"})
+    assert json.loads(requests[0].content)["fetch"] == [body, {"ref": "6a0d2e83", "revision": 3}]

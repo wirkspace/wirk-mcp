@@ -40,9 +40,16 @@
      "fetch": {
       "type": "array",
       "items": {
-       "type": "string"
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "object"
+        }
+       ]
       },
-      "description": "Refs: ID, short ID, exact title, or ID@N for revision N."
+      "description": "Refs: ID, short ID, exact title, ID@N, or {ref, revision, select}."
      },
      "about": {
       "type": "string",
