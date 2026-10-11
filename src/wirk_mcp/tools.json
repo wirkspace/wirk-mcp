@@ -52,6 +52,10 @@
       "type": "object",
       "description": "Filters, e.g. {\"status\": [\"open\"], \"kind\": \"work\", \"owner\": \"me\", \"linked\": \"ID\", \"changed_days\": 7}; kind: work, context, folder, record, message; inbox=me: your unseen messages; participant=[ID]: by or to; state is an initiative's; proposal=[\"proposed\"] lists proposals."
      },
+     "wait": {
+      "type": "integer",
+      "description": "With inbox=me: hold up to this many seconds, 0–60, for a pending message."
+     },
      "receipt": {
       "type": "string",
       "description": "A request_id: its stored write or review receipt."

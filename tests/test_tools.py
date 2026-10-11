@@ -20,7 +20,7 @@ def definitions(tools):
 def test_exactly_five_compact_tools(mcp):
     tools = definitions(mcp.tools())
     assert [t["name"] for t in tools] == NAMES
-    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5120
+    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5200  # 5120 before the inbox wait key
     assert len(mcp.instructions().encode()) <= 900
     assert "$defs" not in json.dumps(tools)
 
@@ -193,7 +193,7 @@ def test_privacy_wording_and_no_v1():
 def test_the_package_pins_the_tested_cli():
     import tomllib
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-    assert "wirk==0.4.7" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
+    assert "wirk==0.4.8" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
 
 
 def test_an_unknown_outcome_is_worded_for_mcp(mcp):
@@ -241,3 +241,10 @@ def test_the_inbox_is_the_boards_of_your_work_and_your_own_handoff_stays_unseen(
     acted on; the inbox is your messages and the boards of the items you hold."""
     text = mcp.instructions()
     assert "sent to you or on held-item boards" in text and "what you acted on, never your own handoff" in text
+
+
+def test_query_wait_is_described_with_its_range(mcp):
+    """decision 95: a harness holds inbox=me up to a minute instead of polling; the schema names the range."""
+    query = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_query")
+    described = query["inputSchema"]["properties"]["wait"]["description"]
+    assert "inbox=me" in described and "0–60" in described and query["inputSchema"]["properties"]["wait"]["type"] == "integer"
