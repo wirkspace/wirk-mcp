@@ -54,7 +54,7 @@
      },
      "wait": {
       "type": "integer",
-      "description": "With inbox=me: hold up to this many seconds, 0–60, for a pending message."
+      "description": "With inbox=me: hold up to this many seconds (0–60) for a message."
      },
      "receipt": {
       "type": "string",
