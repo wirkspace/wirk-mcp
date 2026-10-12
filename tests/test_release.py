@@ -1,9 +1,12 @@
 """The release workflow and the package metadata: installable from PyPI or the release wheels, no stored token."""
 
+import os
 import re
+import subprocess
 import tomllib
 from pathlib import Path
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).parent.parent
@@ -41,7 +44,36 @@ def test_the_readme_gives_the_sites_install_command():
 
 def test_ci_installs_the_pinned_cli():
     ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
-    assert 'pip install "wirk==0.4.13"' in ci
+    assert 'pip install ".[test]"' in ci
+
+
+@pytest.mark.parametrize("public,main,private", [(False, True, "false"), (False, True, "true"),
+                                                  (False, False, "true"), (True, True, "false")])
+def test_ci_requires_its_declared_cli_before_tests(tmp_path, public, main, private):
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    assert "wirk==0.4.13" in project["dependencies"]
+    assert {"pytest>=8,<10", "pyyaml>=6"} <= set(project["optional-dependencies"]["test"])
+    steps = yaml.load((ROOT / ".github/workflows/ci.yml").read_text(), Loader=yaml.BaseLoader)["jobs"]["verify"]["steps"]
+    script = next(step["run"] for step in steps if step.get("name", "").startswith("The 17+ MCP tests"))
+    fake = tmp_path / "python"
+    fake.write_text("""#!/bin/sh
+printf '%s\\n' "$*" >> "$FAKE_TRACE"
+case "$*" in
+  "-m pip install wirk==0.4.13"|"-m pip install .[test]") [ "$FAKE_PUBLIC_AVAILABLE" = 1 ] ;;
+  "-m pip install wirk @ git+https://github.com/wirkspace/wirk-cli@main") [ "$FAKE_MAIN_AVAILABLE" = 1 ] ;;
+  "-m pip install --no-deps ."|"-m pip install mcp>=2.2,<3 anyio>=4 pytest pyyaml"|"-m pytest tests -q -rs") exit 0 ;;
+  *) exit 97 ;;
+esac
+""")
+    fake.chmod(0o755)
+    trace = tmp_path / "invocations.txt"
+    env = {**os.environ, "PATH": f"{tmp_path}:{os.environ['PATH']}", "FAKE_TRACE": str(trace),
+           "FAKE_PUBLIC_AVAILABLE": str(int(public)), "FAKE_MAIN_AVAILABLE": str(int(main)), "PRIVATE": private}
+    result = subprocess.run(["bash", "-e", "-c", script], cwd=ROOT, env=env, capture_output=True, text=True)
+    calls = trace.read_text().splitlines()
+    assert (result.returncode == 0) is public, (result.stdout, result.stderr, calls)
+    assert calls.count("-m pytest tests -q -rs") == int(public), calls
+    assert not any("git+" in call for call in calls), calls
 
 
 def test_the_readme_by_hand_path_works_beside_an_earlier_install():

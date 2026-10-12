@@ -22,14 +22,6 @@ jobs:
       - run: python -m pip install build
       - run: python -m build
       - name: The 17+ MCP tests, against the wirk-cli they pin
-        env:
-          PRIVATE: ${{ github.event.repository.private }}
-          GIT_TERMINAL_PROMPT: "0"
         run: |
-          if python -m pip install "wirk==0.4.13" || python -m pip install "wirk @ git+https://github.com/wirkspace/wirk-cli@main"; then
-            python -m pip install --no-deps . && python -m pip install "mcp>=2.2,<3" "anyio>=4" pytest pyyaml && python -m pytest tests -q -rs
-          elif [ "$PRIVATE" = "true" ]; then
-            echo "::notice::the wirk package is not installable from this private repository's runner yet; the MCP tests run once it is public or on PyPI."
-          else
-            exit 1
-          fi
+          python -m pip install ".[test]"
+          python -m pytest tests -q -rs
