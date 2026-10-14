@@ -82,6 +82,7 @@ def test_write_names_works_at_a_person_record_to_a_company_record(mcp):
     assert ("type related_to, contributes_to, requires, cites, relies_on or works_at (a person record to a company "
             "record)") in operations
 
+
 @pytest.mark.parametrize("tool, route", [("wirk_status", "/v2/status"), ("wirk_query", "/v2/query"),
                                          ("wirk_write", "/v2/write"), ("wirk_review", "/v2/review"),
                                          ("wirk_show", "/v2/show")])
