@@ -263,7 +263,7 @@ def test_query_fetch_takes_the_apis_object_form_beside_strings(mcp):
 
 
 def test_query_sort_and_fetch_example_mirror_the_cli_query_help(mcp):
-    """bed194f1 entry 15: agents guessed sort=-changed and a top-level select; the CLI query help already said both."""
+    """friction entry 15: agents guessed sort=-changed and a top-level select; the CLI query help already said both."""
     from wirk_cli.help import HELP
     cli_help = " ".join(HELP["query"].split())
     sort = "sort=changed is newest first; leading - reverses"
