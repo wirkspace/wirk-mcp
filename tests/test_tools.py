@@ -20,7 +20,8 @@ def definitions(tools):
 def test_exactly_five_compact_tools(mcp):
     tools = definitions(mcp.tools())
     assert [t["name"] for t in tools] == NAMES
-    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5250  # 5120 before the inbox wait key
+    # 5120 before the inbox wait key, 5250 before the sort values and the fetch example
+    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5450
     assert len(mcp.instructions().encode()) <= 900
     assert "$defs" not in json.dumps(tools)
 
@@ -259,3 +260,14 @@ def test_query_fetch_takes_the_apis_object_form_beside_strings(mcp):
     body = {"ref": "5c1e7a90", "revision": 2, "select": [{"type": "whole", "part": {"type": "file", "file_id": "f1"}}]}
     result, requests = mcp.call("wirk_query", {"fetch": [body, "6a0d2e83@3"], "format": "json"})
     assert json.loads(requests[0].content)["fetch"] == [body, {"ref": "6a0d2e83", "revision": 3}]
+
+
+def test_query_sort_and_fetch_example_mirror_the_cli_query_help(mcp):
+    """bed194f1 entry 15: agents guessed sort=-changed and a top-level select; the CLI query help already said both."""
+    from wirk_cli.help import HELP
+    cli_help = " ".join(HELP["query"].split())
+    sort = "sort=changed is newest first; leading - reverses"
+    fetch = '{"fetch":[{"ref":"ID","select":[{"type":"whole","part":{"type":"file","file_id":"F"}}]}]}'
+    assert sort in cli_help and fetch in cli_help
+    query = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_query")["inputSchema"]["properties"]
+    assert query["sort"]["description"] == sort and fetch in query["fetch"]["description"]

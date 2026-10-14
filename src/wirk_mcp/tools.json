@@ -49,7 +49,7 @@
         }
        ]
       },
-      "description": "Refs: ID, short ID, exact title, ID@N, or {ref, revision, select}."
+      "description": "Refs: ID, short ID, exact title, ID@N, or {ref, revision, select}; a file's derived text: {\"fetch\":[{\"ref\":\"ID\",\"select\":[{\"type\":\"whole\",\"part\":{\"type\":\"file\",\"file_id\":\"F\"}}]}]}"
      },
      "about": {
       "type": "string",
@@ -76,7 +76,8 @@
       ]
      },
      "sort": {
-      "type": "string"
+      "type": "string",
+      "description": "sort=changed is newest first; leading - reverses"
      },
      "limit": {
       "type": "integer"
