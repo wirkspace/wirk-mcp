@@ -121,7 +121,7 @@
       "items": {
        "type": "object"
       },
-      "description": "1-32 of: {op:item.create, ref?, data:{title, body?, work?:{owner_id?, due_at?, criteria?:[{text}]}, context?:{level, state?, steward_id?, open?}, fields?}, allow_duplicate_of?} · {op:item.edit, id, patch:{title?, body?, work?, fields?}} · {op:link.create, data:{type, from, to}}, type related_to, contributes_to, requires, cites or relies_on, from/to may be $ref of a new item; a cites quotation must match the cited text exactly, or quotation_mismatch · {op:link.remove, id} · {op:item.archive, id} · {op:item.restore, id} · {op:message.send, ref?, data:{body, title?, to?:[principal], reply_to?}} · {op:message.acknowledge, messages:[ID]}. work makes an item work, context makes it context (level organization or initiative); fields maps a field to an option, null clears."
+      "description": "1-32 of: {op:item.create, ref?, data:{title, body?, work?:{owner_id?, due_at?, criteria?:[{text}]}, context?:{level, state?, steward_id?, open?}, fields?}, allow_duplicate_of?} · {op:item.edit, id, patch:{title?, body?, work?, fields?}} · {op:link.create, data:{type, from, to}}, type related_to, contributes_to, requires, cites, relies_on or works_at (a person record to a company record), from/to may be $ref of a new item; a cites quotation must match the cited text exactly, or quotation_mismatch · {op:link.remove, id} · {op:item.archive, id} · {op:item.restore, id} · {op:message.send, ref?, data:{body, title?, to?:[principal], reply_to?}} · {op:message.acknowledge, messages:[ID]}. work makes an item work, context makes it context (level organization or initiative); fields maps a field to an option, null clears."
      },
      "expect": {
       "type": "object",
