@@ -20,8 +20,8 @@ def definitions(tools):
 def test_exactly_five_compact_tools(mcp):
     tools = definitions(mcp.tools())
     assert [t["name"] for t in tools] == NAMES
-    # 5120 before the inbox wait key, 5250 before the sort values and the fetch example
-    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5450
+    # 5120 before the inbox wait key, 5250 before the sort values and the fetch example, 5450 before works_at
+    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5494
     assert len(mcp.instructions().encode()) <= 900
     assert "$defs" not in json.dumps(tools)
 
@@ -74,6 +74,13 @@ def test_meaning_ranking_names_pro_and_expect_names_parent_work(mcp):
     tools = {t["name"]: t["description"] for t in definitions(mcp.tools())}
     assert "parent work of a contributes_to link" in tools["wirk_write"]
 
+
+def test_write_names_works_at_a_person_record_to_a_company_record(mcp):
+    """works_at joins the link types a link.create takes, in the words of the CLI's write help."""
+    tools = {t["name"]: t for t in definitions(mcp.tools())}
+    operations = tools["wirk_write"]["inputSchema"]["properties"]["operations"]["description"]
+    assert ("type related_to, contributes_to, requires, cites, relies_on or works_at (a person record to a company "
+            "record)") in operations
 
 @pytest.mark.parametrize("tool, route", [("wirk_status", "/v2/status"), ("wirk_query", "/v2/query"),
                                          ("wirk_write", "/v2/write"), ("wirk_review", "/v2/review"),
