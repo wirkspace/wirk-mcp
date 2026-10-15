@@ -31,6 +31,8 @@ ROUTES = {"wirk_status": "/v2/status", "wirk_query": "/v2/query", "wirk_write": 
 UPLOAD_ID = re.compile(r"(upload_)?[0-9a-f]{6,32}")  # core's form; any other string in a file key is a local path
 FILE_KEYS = {"item.create": ("data", "uploads"), "message.send": ("data", "uploads"),
              "item.edit": ("patch", "attach_uploads")}
+TRANSIENT = {"storage_failed", "outcome_unknown", "files_unavailable", "service_unavailable", "service_error",
+             "upload_incomplete"}  # an identical resend may succeed; anything else needs a change
 SESSION = secrets.token_hex(8)  # one per server process, reported with status
 TRANSPORT = None  # tests put a fake service here
 SERVICES: list = []
@@ -105,10 +107,9 @@ def store_files(body: dict, cancelled: threading.Event) -> str | None:
         except Cancelled:
             break
         if not answer["ok"]:
-            retry = (f"A file or path changed since request_id {request_id} was first used: send these arguments under a "
-                     "new request_id." if answer["errors"][0]["code"] == "request_conflict" else
-                     f"Resend the identical arguments with request_id {request_id} to retry; stored files are reused, and "
-                     "changed arguments need a new request_id.")
+            retry = (f"Resend the identical arguments with request_id {request_id}; stored files are reused."
+                     if answer["errors"][0]["code"] in TRANSIENT else
+                     "Fix what the error names, then send the arguments under a new request_id.")
             return "\n".join([f"{Path(path).name}: {problem_text(answer)}",
                               *([f"Stored but attached to nothing: {', '.join(stored)}."] if stored else []),
                               f"Nothing was written. {retry}"])
