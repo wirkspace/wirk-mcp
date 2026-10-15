@@ -47,19 +47,15 @@ def service() -> Service:
     return SERVICES[0]
 
 
-class Cancelled(Exception):
-    """The host gave up on the call."""
-
-
 class Watched:
-    """An open file whose reads stop once the call is cancelled, so no more bytes leave."""
+    """An open file whose reading stops at the next chunk once the call is cancelled."""
 
     def __init__(self, source, cancelled: threading.Event):
         self.source, self.cancelled = source, cancelled
 
     def read(self, size: int = -1) -> bytes:
         if self.cancelled.is_set():
-            raise Cancelled
+            raise Failure("cancelled", "the host cancelled the call; reading stopped.")
         return self.source.read(size)
 
     def seek(self, *where):
@@ -84,8 +80,7 @@ def store_files(body: dict, cancelled: threading.Event) -> str | None:
         if not os.path.isabs(path):
             return f"{path} is neither an upload ID nor an absolute path to a file on this machine. Nothing was sent."
         if len(confirm_id) > 200:
-            return (f"request_id is too long: with {confirm_id[len(request_id):]} added it names an upload, and that "
-                    "must stay within 200 characters. Nothing was sent.")
+            return f"request_id plus {confirm_id[len(request_id):]} must stay within 200 characters. Nothing was sent."
         try:
             with readable(path):
                 pass
@@ -97,20 +92,17 @@ def store_files(body: dict, cancelled: threading.Event) -> str | None:
             with readable(path) as source:
                 answer = store(Watched(source, cancelled), path, confirm_id, "", service(),
                                workspace_id=body.get("workspace_id"))
-        except Failure as failure:  # storage or an unknown outcome, in the client's words without its CLI hint
-            answer = {"ok": False, "errors": [{"code": failure.code, "message": str(failure)}]}
+            code, said = (None, None) if answer["ok"] else (answer["errors"][0]["code"], problem_text(answer))
+        except Failure as failure:  # storage, an unknown outcome or a cancel, in the client's words without its CLI hint
+            code, said = failure.code, f"Error {failure.code}: {failure}"
         except UsageError as error:  # the file went away or changed kind after the checks
-            answer = {"ok": False, "errors": [{"code": "unreadable", "message": str(error)}]}
+            code, said = None, str(error)
         except h11.LocalProtocolError:
-            answer = {"ok": False, "errors": [{"code": "storage_failed", "message": "the file changed while it was "
-                                               "sent; nothing was stored."}]}
-        except Cancelled:
-            break
-        if not answer["ok"]:
+            code, said = "storage_failed", "Error storage_failed: the file changed while it was sent; nothing was stored."
+        if said:
             retry = (f"Resend the identical arguments with request_id {request_id}; stored files are reused."
-                     if answer["errors"][0]["code"] in TRANSIENT else
-                     "Fix what the error names, then send the arguments under a new request_id.")
-            return "\n".join([f"{Path(path).name}: {problem_text(answer)}",
+                     if code in TRANSIENT else "Fix what the error names, then send the arguments under a new request_id.")
+            return "\n".join([f"{Path(path).name}: {said}",
                               *([f"Stored but attached to nothing: {', '.join(stored)}."] if stored else []),
                               f"Nothing was written. {retry}"])
         entries[n] = answer["data"]["upload"]["id"]
@@ -129,6 +121,7 @@ def call(name: str, arguments: dict, client: types.Implementation | None, cancel
     body.setdefault("format", "text")
     if name == "wirk_write" and (stopped := store_files(body, cancelled)):
         return stopped, True
+    # a cancel landing after store_files' last check still sends this write; its request_id keeps it idempotent
     headers = {"Wirk-Context": context.header(client.name if client else "", client.version if client else "", SESSION)} \
         if name == "wirk_status" else None
     try:
