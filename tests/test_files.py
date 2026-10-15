@@ -13,30 +13,26 @@ from conftest import TOKEN, envelope
 STORE = "https://storage.test"
 
 
-def files(put_status=200, confirm=None, write=None, put=None):
-    """The service and storage: declare gives a signed link, confirm an upload ID named after its request ID."""
+def files(confirm=None, write=None, put=None):
+    """The service and storage: declare gives a signed link, confirm an upload ID named after its request ID; `put`
+    sees each PUT and may answer a status for it."""
     def answer(request):
         if request.url.host == "storage.test":
-            if put:
-                put(request)
+            status = put(request) if put else None
             request.read()
-            return httpx.Response(put_status)
+            return httpx.Response(status or 200)
         body = json.loads(request.content)
         if "upload" in body:
             return envelope(data={"present": False, "put": {"url": f"{STORE}/o/{body['upload']['sha256']}?X-Amz-Signature=s",
                                                             "headers": {"x-amz-checksum-sha256": "c"}, "expires_at": "2999"}})
         if "confirm" in body:
-            return (confirm or upload_of)(body)
+            return confirm(body) if confirm else envelope(data={"upload": {"id": upload_id(body["request_id"])}})
         return (write or (lambda b: envelope("Applied w-1 · created 5c1e7a90")))(body)
     return answer
 
 
-def upload_of(body):
-    return envelope(data={"upload": {"id": "upload_" + hashlib.sha256(body["request_id"].encode()).hexdigest()[:32]}})
-
-
 def upload_id(request_id):
-    return json.loads(upload_of({"request_id": request_id}).content)["data"]["upload"]["id"]
+    return "upload_" + hashlib.sha256(request_id.encode()).hexdigest()[:32]
 
 
 def bodies(requests):
@@ -123,24 +119,14 @@ def test_the_wirkspace_named_in_the_call_receives_the_files(mcp, pdf):
 
 
 def test_a_failed_upload_writes_nothing_and_names_what_was_stored(mcp, pdf):
-    result, requests = mcp.call("wirk_write", create(str(pdf / "report.pdf"), str(pdf / "standup.m4a")), failing_second_put())
+    puts = []
+    result, requests = mcp.call("wirk_write", create(str(pdf / "report.pdf"), str(pdf / "standup.m4a")),
+                                files(put=lambda request: puts.append(request) or (500 if len(puts) == 2 else None)))
     text = result.content[0].text
     assert result.is_error and all(r.url.path != "/v2/write" for r in requests)
     assert "storage_failed" in text and "Stored but attached to nothing: report.pdf." in text
     assert "Nothing was written. Resend the identical arguments with request_id w-1" in text
     assert "wirk upload" not in text and "--request-id" not in text and STORE not in text
-
-
-def failing_second_put():
-    puts = []
-
-    def answer(request):
-        if request.url.host == "storage.test":
-            request.read()
-            puts.append(request)
-            return httpx.Response(500 if len(puts) == 2 else 200)
-        return files()(request)
-    return answer
 
 
 def test_a_changed_resend_is_told_to_use_a_new_request_id(mcp, pdf):
