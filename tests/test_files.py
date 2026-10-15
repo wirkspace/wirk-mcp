@@ -177,3 +177,11 @@ def test_a_cancelled_call_never_writes(mcp, pdf):
     assert finished.wait(5)
     time.sleep(0.3)
     assert "/v2/write" not in [r.url.path for r in mcp.requests_seen]
+
+
+def test_the_write_tool_says_paths_are_taken_and_how_to_retry(mcp):
+    write = next(t for t in mcp.tools() if t.name == "wirk_write").input_schema["properties"]
+    operations, request_id = write["operations"]["description"], write["request_id"]["description"]
+    assert "uploads?" in operations and "attach_uploads?" in operations
+    assert "upload IDs or absolute local file paths" in operations and "nothing is written" in operations
+    assert "After an uncertain result, resend with that ID" in request_id and "attaching files" in request_id
