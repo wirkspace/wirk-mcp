@@ -1,110 +1,126 @@
 # Plan: let MCP-only agents attach files
 
-WIRK work item `1d6d8ea2`; branch `mcp-file-attach`. Revised 15 October 2026 after Samuel's decision (message `10a06154`): an argument on `wirk_write`, not a new tool; the server uploads the named local files and writes in one step; a failed or partial upload applies nothing; MCP and CLI stay at parity. Plan only; it goes to adversarial review before any code.
+WIRK work item `1d6d8ea2`; branch `mcp-file-attach`. Revised 15 October 2026 after Samuel's decision (message `10a06154`): an argument on `wirk_write`, not a new tool; the server uploads the named local files and writes in one step; a failed or partial upload applies nothing; MCP and CLI stay at parity. Second revision after the plan review of PR 33 at d48a8b4.
 
 ## Problem
 
-An agent with only MCP cannot store a file: no tool reaches `POST /v2/files`, and MCP has no way to carry bytes from the agent to the server. Logs, PDFs and recordings are lost from MCP-only sessions. Criteria:
+An agent with only MCP cannot store a file: no tool reaches `POST /v2/files`, and MCP carries no bytes from the agent to the server. Criteria:
 - A session using only MCP attaches a local PDF and an audio file to a new item in one write, and the downloaded bytes match the originals' hashes.
 - A failed or partial upload applies nothing.
 
 ## The argument
 
-No new tool, no new key. The existing file keys of `wirk_write`'s operations also take local paths:
-- `item.create` and `message.send`: `data.uploads`;
-- `item.edit`: `patch.attach_uploads`.
-
-Shape: a list of strings, each an upload ID (as today) or an absolute local path. A string starting with `/` or `~/` is a path (`~/` is expanded); upload IDs never start with either. IDs and paths may be mixed; order is kept.
+No new tool, no new key. The existing file keys of `wirk_write`'s operations also take local paths: `data.uploads` on `item.create` and `message.send`, and `patch.attach_uploads` on `item.edit`. Each is a list of strings. A string matching core's ID form `(upload_)?[0-9a-f]{6,32}` is an upload ID and passes through as today. Anything else is a path: `~/` is expanded, and it must then be absolute or it is refused locally, so a relative path never reaches core as an ID. Order is kept.
 
 ```json
-{"operations": [{"op": "item.create", "data": {"title": "Load test evidence", "body": "…",
+{"request_id": "evidence-load-test-1", "operations": [{"op": "item.create", "data": {"title": "Load test evidence",
   "uploads": ["/Users/sam/Downloads/report.pdf", "/Users/sam/Downloads/standup.m4a"]}}]}
 ```
 
-Description text the agent sees. The three shapes in `operations` gain `uploads?` (create, message) and `attach_uploads?` (edit), and one sentence is appended:
-
-> uploads/attach_uploads: upload IDs or absolute local file paths; the files are stored first, and if one fails nothing is written.
+What the agent reads:
+- The operation shapes gain `uploads?` (create, message) and `attach_uploads?` (edit).
+- One sentence: "uploads/attach_uploads: upload IDs or absolute local file paths, stored first; if one fails nothing is written."
+- `request_id` keeps "After an uncertain result, resend with that ID" and adds "set your own when attaching files" (B1 below).
 
 Limits, the CLI's own:
-- **Size:** the service's `max_upload_bytes` per file (5 GiB by default), refused at the declare step with `upload_too_large` before any byte moves, exactly as `wirk upload` is.
-- **Count:** no per-call cap of its own; core's write limits apply (32 operations, 4 MiB request, and only IDs reach `/v2/write`).
-- **Types:** any regular file; core derives the media type from the base name, as for the CLI.
-- **Which files:** the CLI's `readable()` check, shared (a regular file; never WIRK's own token or configuration, by device and inode). One addition for MCP only, below.
+- **Size:** the service's `max_upload_bytes` per file (5 GiB by default), refused at declare with `upload_too_large`.
+- **Count:** no cap of MCP's own; core's write limits apply (32 operations, 4 MiB; only IDs reach `/v2/write`).
+- **Types:** any regular file; core derives the media type from the name.
+- **Which files:** the CLI's `readable()` only: a regular file, never WIRK's own token or configuration. There is no MCP-only rule. The host's per-call approval shows the full path.
 
 ## Flow, inside one `wirk_write` call (wirk-mcp `server.py`)
 
-1. **Find paths** in the keys above. None: the write is sent exactly as today.
-2. **Check every path before any request:** absolute after `~/`; resolved through symlinks; no part of the resolved path starts with `.`; opened with the CLI's `readable()`. Any refusal returns an error naming the path, says nothing was sent, and makes no request.
-3. **Store each file with the CLI's transfer**, in order, in the call's `workspace_id`: declare `{bytes, sha256}`; PUT the bytes to the signed link unless `present`; confirm with the base name and request ID `<request_id>/<operation>/<n>`; one retry on `upload_incomplete`, as the CLI does. The confirmed upload ID replaces the path.
-4. **Write once:** `/v2/write` under the call's `request_id` (the server makes one if absent, as today), carrying only upload IDs.
-5. **Answer.** Success: the write's receipt text, the same answer `wirk write --request` gives with those upload IDs. Failure in step 3 (`upload_too_large`, `not_authorized`, `files_unavailable`, `storage_failed`, `upload_mismatch`, `request_conflict` when a file changed between tries, `outcome_unknown` on a confirm): an error with the service's or storage's words for that file, then `Nothing was written. Resend the identical arguments with request_id R; files already stored are reused.` A refused write (for example `basis_changed`) is core's answer unchanged; core applies nothing.
+1. **Find paths** in the keys above. With none, the write is sent exactly as today.
+2. **Check everything before any request.** Each path must be absolute and pass `readable()` (opened and closed at once). Each derived confirm ID `<request_id>/<operation index>/<n>` must fit core's 200 characters. A refusal names the path and says nothing was sent.
+3. **Store each file**, one open at a time and opened by the path that was checked, with wirk-cli's `store()` in the call's `workspace_id`:
+   - declare `{bytes, sha256}`;
+   - PUT to the signed link unless the bytes are present;
+   - confirm with the base name of the path as given, under the derived ID, retrying once on `upload_incomplete`.
 
-The signed link never reaches the agent or the output; only the base name, size and SHA-256 reach WIRK, never the full path.
+   The declare and confirm bodies carry only the base name, size and hash. The upload ID replaces the path.
+4. **Write once** under the call's `request_id`, with only upload IDs.
+5. **Answer.** Success returns the write's receipt, the same answer `wirk write --request` gives with those IDs. A failure in step 3 returns the service's or storage's words, without CLI hints, then:
+   - files already stored: "Stored but attached to nothing: a.pdf.";
+   - then "Nothing was written. Resend the identical arguments with request_id R; files already stored are reused.";
+   - on `request_conflict` (a path or file changed on a resend), "Nothing was written. Send the corrected arguments under a new request_id."
+
+   A refused write (for example `basis_changed`) is core's answer unchanged, and core applies nothing.
+
+**B1, cancellation and host timeouts.** `call_tool` runs `call` in a worker thread. A host that gives up (Codex's per-call default is about 60 seconds) cancels the request. `call_tool` then sets a per-call cancel flag and returns at once (`abandon_on_cancel`). The thread checks the flag between file chunks and before the write, and never sends the write once it is set. Files stored by then stay unattached. A resend under the agent's own `request_id` reuses them; a server-made ID is lost with the cancelled answer, hence the description line.
 
 ## Atomicity
 
-- The write is never sent unless every path became an upload ID; core's write is atomic, and an unknown upload refuses the whole batch.
-- Files confirmed before a failure stay stored and unattached, on no item. That is what happens today when `wirk upload` is not followed by a write. Correction to the brief: unattached uploads do not expire, for the CLI or anyone. Core has no sweeper, and the bucket's lifecycle expires only noncurrent object versions after 90 days.
-- A resend with the same `request_id` repeats nothing: each declare finds the bytes (`present`, no PUT), each confirm returns the same upload ID under its derived request ID, and the write body is byte-identical, so core applies once or replays the receipt. Only a changed resend (new `request_id`) leaves one more unattached upload record of the same stored object.
+The write is never sent unless every path became an upload ID; core's write is atomic, and an unknown upload refuses the whole batch. Files confirmed before a failure stay stored and unattached, as after a `wirk upload` never followed by a write. Such uploads do not expire today, for any client: core has no sweeper, and the bucket lifecycle covers only noncurrent versions. An identical resend repeats nothing:
+- each declare finds the bytes, so there is no PUT;
+- each confirm returns the same upload ID under the same derived ID;
+- the write body is byte-identical, so core applies once or replays the receipt.
 
 ## Parity with the CLI
 
-The same limits and the same errors (the same codes from the same service steps, through the same shared functions), and the same resulting item: base names, media types, sizes and hashes as `wirk upload` then `wirk write --upload`. The CLI takes two commands, MCP one call.
+The same limits and the same errors, through the same shared functions (`readable()`, `store()`), and the same resulting item: names, media types, sizes and hashes as `wirk upload` then `wirk write --upload`. MCP takes one call where the CLI takes two. MCP cannot:
+- give a per-file description (`--description`); the body says what the files are;
+- store without writing, or read stdin.
 
-What MCP cannot do that the CLI can, and why:
-- **Hidden paths** (any part starting with `.`, such as `~/.ssh`, `~/.aws` or `.env`) are refused over MCP. A CLI agent already has a shell that can read them, so the CLI adds no reach. The MCP server may be the only file access an agent has, and secrets live in those places. The error says a person can use `wirk upload`.
-- **No per-file description** (`wirk upload --description`); the item or message body says what the files are.
-- **No store-without-write and no stdin**: MCP always attaches in the same call.
+An existing CLI gap, unchanged: `wirk upload` cannot choose a wirkspace (`store()` sends `workspace_id` only for MCP's caller). Paths in `wirk write --request` are a CLI interface question for Samuel separately, not built here.
 
 ## Code
 
-- **wirk-cli** `cli.py`: split `send_file` into `store(source, path, request_id, description, retry, service) -> envelope`, which prints nothing because stdout is the MCP channel and takes the retry wording as a parameter, and the CLI's wrapper that emits it. No CLI interface change. It ships in the next CLI release; wirk-mcp pins that exact version.
-- **wirk-mcp** `server.py`: path detection, checks, the store loop and the failure text; `tools.json`: the description edits. No core change, no new route, tool or key.
+- **wirk-cli** `cli.py`: split `send_file` into a silent `store(source, path, request_id, retry, service, description=None, workspace_id=None, fmt="json")` that returns the confirmed envelope, and the CLI wrapper that emits it. No CLI interface change. A PR on `mcp-file-attach` there.
+- **wirk-mcp** `server.py`: classification, checks, the store loop, the cancel flag and the failure text. `tools.json`: the description edits. During the build wirk-mcp installs wirk-cli from the local branch. The `wirk==` pin moves to the released version at merge.
+- No core change, route, tool or key.
 
-## Schema budget (5,494 bytes, measured today: 5,494, no headroom; instructions 897 of 900, untouched)
+## Schema budget
 
-- Adds about 157 bytes: the three `uploads?`/`attach_uploads?` keys (37) and the sentence (120).
-- Cuts about 163 bytes of repeated text:
-  - `wirk_status` format's "text (default) or json." (40);
-  - `wirk_write` request_id becomes "Optional; named in the receipt." (62), since the `outcome_unknown` hint already gives the resend at the moment it matters;
-  - `wirk_review` request_id's description (61), since `required` shows it is optional.
-- The bound in `test_exactly_five_compact_tools` stays 5,494; the build measures the exact figure.
+The bound in `test_exactly_five_compact_tools` is 5,494 bytes, measured at exactly 5,494. Instructions are 897 of 900 bytes and untouched.
+- **Adds about 175 bytes:** the keys (37), the sentence (about 105) and the request_id clause (about 33).
+- **Cuts the same from `wirk_status` and `wirk_review`:** `wirk_status` format's "text (default) or json." (40), `wirk_review` request_id's description (61), and trims of their prose that keep every wording test.
+- The bound is not raised. The build records the exact figure.
 
 ## Tests (RED first)
 
-End to end against a real core: wirk-core's `create_app` in process on a scratch SQLite database, with the contract tests' object store that refuses any PUT whose bytes or signed headers differ. The test is wired as an httpx transport under wirk-mcp's in-process MCP client. Core is private, so the file starts with `pytest.importorskip("wirk_core.service")`. It runs locally with core installed into the venv at a recorded SHA; public CI skips it, and no private URL enters `pyproject.toml`.
+Fast tests on the fake transport, covered by public CI:
+1. Criterion 2: a missing second path sends no request at all.
+2. Refused before any request:
+   - a relative path, a directory, a missing file;
+   - the agent token;
+   - an over-long request_id;
+   - a non-ID string like `report.pdf`.
+3. Cancellation: the client times out mid-PUT, and no `/v2/write` is ever sent.
+4. A write refused after the files were stored (`basis_changed`): core's answer, with nothing more to resend.
+5. `request_conflict` on a changed resend gives the "new request_id" tail.
+6. Two operations, each with files (create plus message, and an edit with `attach_uploads`): derived IDs and order are right, and mixed IDs and paths are kept.
+7. `workspace_id` reaches declare and confirm.
+8. Declare and confirm bodies carry only the base name, size and hash. No full path, signed URL or token appears in any body or answer.
+9. A write without paths is byte-identical to today's, nothing prints to stdout, and the person token is never opened.
+10. The budget holds, and the description names the keys.
 
-1. **Criterion 1:** one `wirk_write` with a PDF and an `.m4a` path in `data.uploads` makes one item with two files. Downloading each through `/v2/files` gives bytes whose SHA-256 equals the originals'. Names are base names, media types are `application/pdf` and audio; the write body holds no path.
-2. **Criterion 2:** the second path is missing, so no request is made at all, and no item or upload exists in core afterwards.
-3. **Partial failure:** the store refuses the second PUT, so the error says nothing was written and names the request ID, and there is no item. Resending the identical arguments after the store recovers gives exactly one item, with no second PUT of the first file; a third resend replays the receipt.
-4. **Limits:** with core's `max_upload_bytes` set to 1 KiB, a 2 KiB file is refused with `upload_too_large` and no write, the same code `wirk upload` gets on that file in the same test. Refused before any request: a relative path, a directory, a missing file, the agent token, a path under a dot-folder, and a symlink resolving into one.
+End to end against a real core: wirk-core's `create_app` in process on a scratch SQLite database, under the in-process MCP client through an httpx transport. The object store is a copy of core's test `FakeObjects` (not installed with `wirk_core`, so about 30 lines are copied with a note); it checks the stored size and checksum. The file importorskips `wirk_core.service` and runs locally with core at a recorded SHA. Public CI skips it, and no private URL enters `pyproject.toml`. About 110 lines.
+- E1, criterion 1: a PDF and an `.m4a` in one call make one item with two files; the downloaded SHA-256 equals the originals'.
+- E2, partial failure: the second PUT is refused, so there is no item and the first file is stored unattached. An identical resend after recovery gives one item with no re-PUT, and a third resend replays the receipt.
+- E3, limits: core's `max_upload_bytes` is set to 1 KiB, and a 2 KiB file gets `upload_too_large` with no write.
+- E4, a principal in two wirkspaces: the files land in the named one.
 
-Fast tests on the existing fake transport:
+wirk-cli: `store()` returns the envelope, prints nothing and sends `workspace_id` when given; the existing upload tests stay green.
 
-5. `attach_uploads` on `item.edit` and `uploads` on `message.send` take paths, and mixed IDs and paths keep their order.
-6. A write without paths is byte-identical to today's.
-7. Nothing is printed to stdout during a write with paths, and the person token is never opened (extends the existing test).
-8. The budget holds, and the operations text names `uploads`, `attach_uploads` and "absolute local file paths".
-9. wirk-cli: `store()` returns the confirmed envelope and prints nothing; the existing upload tests stay green.
+**Acceptance trial:** a fresh session with the shell off and only the installed server attaches a real PDF and `.m4a` in one call, and `wirk download` hashes match. A missing second path leaves no item. The trial records calls and time, and how macOS privacy prompts surface.
 
-**Acceptance trial:** a fresh session with the shell off and only the installed server attaches a real PDF and `.m4a` to a new labelled scratch item in one call, and `wirk download` hashes match `shasum -a 256`. A run with a missing second path leaves no item. It records calls and time, and also checks macOS privacy prompts on Downloads and Documents ("Operation not permitted" must surface as a plain refusal).
+## Docs (a separate docs writer, same release)
 
-## Docs (for a separate docs writer, in the same release)
-
-- wirk-mcp README: one sentence in Use; in "What leaves the machine", a named file's bytes go straight to storage and only its base name, size and SHA-256 reach WIRK.
-- wirk-skill `SKILL.md`: one line under Write: attach files with `wirk upload` then `--upload`, or over MCP absolute paths in `uploads`/`attach_uploads`.
-- wirk-site `docs/cli-and-mcp.md` line 143: replace "There is no MCP tool for files; use the CLI." with the path rule and the all-or-nothing sentence. `docs/write.md` lines 41, 67 and 69: note the path form for MCP.
+- wirk-mcp README: one sentence under Use. "What leaves the machine" gains that a named file's bytes go to storage and only its base name, size and hash reach WIRK.
+- `server.py` docstring: arguments are the request bodies, except that paths become upload IDs.
+- wirk-skill `SKILL.md`: one line.
+- wirk-site `docs/cli-and-mcp.md` line 143: "Arguments are the HTTP request bodies" gains the path exception, and "There is no MCP tool for files; use the CLI." is replaced.
+- wirk-site `docs/write.md` lines 41, 67, 69 and `docs/messages.md` line 36 (the uploads row): the path form for MCP.
+- wirk-site `docs/errors.md`: remedies for `storage_failed` and `upload_too_large` in MCP terms.
 
 ## Estimate
 
-wirk-mcp `server.py` +35 lines; `tools.json` net about −6 bytes; tests +170 lines (an e2e harness of about 60 lines plus tests). wirk-cli `cli.py` +6 lines and tests +15.
+wirk-mcp: `server.py` about +45 lines; `tools.json` net 0 bytes or less; fast tests about +120 and e2e about +110. wirk-cli: `cli.py` about +6 lines, tests about +20.
 
 ## Deliberately not built
 
-- A sixth tool, base64 bytes in arguments, or signed links handed to the agent (rejected on 6 October).
-- Allowed-folder configuration (`file-roots`): no new configuration; parity with the CLI plus the hidden-path rule instead.
-- Paths in the CLI's `--upload`: the CLI already reaches the same item, and a CLI flag change is its own interface decision.
-- Paths in `replace_files`, per-file descriptions over MCP, and downloads for MCP-only agents (their own item if wanted).
-- A sweeper for unattached uploads: none exists for the CLI either; a separate backlog item if storage cost or privacy needs it.
-
-No question remains for Samuel.
+- A sixth tool, base64 bytes, signed links for the agent, or allowed-folder configuration.
+- Any MCP-only path rule.
+- Paths in the CLI's write (Samuel's separate question).
+- Paths in `replace_files`, per-file descriptions over MCP, MCP downloads, and a choice of wirkspace for `wirk upload`.
+- A sweeper for unattached uploads (a backlog note in the PR body).
