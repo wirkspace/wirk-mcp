@@ -171,3 +171,54 @@ def test_the_write_tool_says_paths_are_taken_and_how_to_retry(mcp):
     assert "uploads?" in operations and "attach_uploads?" in operations
     assert "upload IDs or absolute local file paths" in operations and "nothing is written" in operations
     assert "After an uncertain result, resend with that ID" in request_id and "attaching files" in request_id
+
+
+INVALID = envelope("Error invalid_input: operations[0].data must be an object", ok=False,
+                   errors=[{"code": "invalid_input", "message": "operations[0].data must be an object"}], status=422)
+
+
+@pytest.mark.parametrize("operation", [{"op": "item.create", "data": "/tmp/report.pdf"},
+                                       {"op": ["item.create"], "data": {"uploads": ["/tmp/report.pdf"]}}])
+def test_a_malformed_operation_goes_to_the_service_untouched(mcp, operation):
+    arguments = {"request_id": "w-3", "operations": [operation]}
+    result, requests = mcp.call("wirk_write", arguments, files(write=lambda body: INVALID))
+    assert bodies(requests) == [{**arguments, "format": "text"}]
+    assert result.is_error and result.content[0].text == "Error invalid_input: operations[0].data must be an object"
+
+
+def test_a_file_gone_after_the_checks_is_a_failure_with_the_stored_list(mcp, pdf):
+    def vanish(request):
+        (pdf / "standup.m4a").unlink(missing_ok=True)
+    result, requests = mcp.call("wirk_write", create(str(pdf / "report.pdf"), str(pdf / "standup.m4a")), files(put=vanish))
+    text = result.content[0].text
+    assert result.is_error and "standup.m4a" in text and "Stored but attached to nothing: report.pdf." in text
+    assert "new request_id" in text and "identical" not in text and all(r.url.path != "/v2/write" for r in requests)
+
+
+def test_a_file_that_changes_while_it_is_sent_is_a_storage_failure(mcp, pdf):
+    import h11
+
+    def grew(request):
+        raise h11.LocalProtocolError("Too much data for declared Content-Length")
+    result, requests = mcp.call("wirk_write", create(str(pdf / "report.pdf")), files(put=grew))
+    text = result.content[0].text
+    assert result.is_error and "storage_failed" in text and "Resend the identical arguments with request_id w-1" in text
+    assert all(r.url.path != "/v2/write" for r in requests)
+
+
+def test_a_request_id_that_is_not_text_is_refused_before_any_file_is_stored(mcp, pdf):
+    result, requests = mcp.call("wirk_write", create(str(pdf / "report.pdf"), request_id=7), files())
+    assert requests == [] and result.is_error and "request_id must be a string" in result.content[0].text
+
+
+def test_a_permanent_refusal_says_what_to_change_not_to_resend(mcp, pdf):
+    large = envelope("Error upload_too_large: Files are limited to 10 bytes", ok=False,
+                     errors=[{"code": "upload_too_large", "message": "Files are limited to 10 bytes"}], status=413)
+
+    def answer(request):
+        if request.url.host != "storage.test" and "upload" in json.loads(request.content):
+            return large
+        return files()(request)
+    result, requests = mcp.call("wirk_write", create(str(pdf / "report.pdf")), answer)
+    text = result.content[0].text
+    assert result.is_error and "upload_too_large" in text and "new request_id" in text and "identical" not in text
