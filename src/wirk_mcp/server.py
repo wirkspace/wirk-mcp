@@ -14,6 +14,7 @@ import threading
 from pathlib import Path
 
 import anyio
+import h11  # httpx's HTTP/1.1 layer: a file that grows or shrinks after hashing surfaces as its protocol error
 import mcp_types as types
 from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
@@ -96,6 +97,11 @@ def store_files(body: dict, cancelled: threading.Event) -> str | None:
                                workspace_id=body.get("workspace_id"))
         except Failure as failure:  # storage or an unknown outcome, in the client's words without its CLI hint
             answer = {"ok": False, "errors": [{"code": failure.code, "message": str(failure)}]}
+        except UsageError as error:  # the file went away or changed kind after the checks
+            answer = {"ok": False, "errors": [{"code": "unreadable", "message": str(error)}]}
+        except h11.LocalProtocolError:
+            answer = {"ok": False, "errors": [{"code": "storage_failed", "message": "the file changed while it was "
+                                               "sent; nothing was stored."}]}
         except Cancelled:
             break
         if not answer["ok"]:
