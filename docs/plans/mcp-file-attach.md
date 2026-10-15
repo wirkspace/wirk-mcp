@@ -14,7 +14,7 @@ No new tool, no new key. The existing file keys of `wirk_write`'s operations als
 
 ```json
 {"request_id": "evidence-load-test-1", "operations": [{"op": "item.create", "data": {"title": "Load test evidence",
-  "uploads": ["/Users/sam/Downloads/report.pdf", "/Users/sam/Downloads/standup.m4a"]}}]}
+  "uploads": ["/home/sam/report.pdf", "/home/sam/standup.m4a"]}}]}
 ```
 
 What the agent reads:
