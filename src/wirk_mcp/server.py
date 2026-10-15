@@ -75,6 +75,8 @@ def store_files(body: dict, cancelled: threading.Event) -> str | None:
         if isinstance(entries, list):
             found += [(entries, n, os.path.expanduser(entry), f"{request_id}/{index}/{n}") for n, entry in enumerate(entries)
                       if isinstance(entry, str) and not UPLOAD_ID.fullmatch(entry)]
+    if found and not isinstance(request_id, str):
+        return "request_id must be a string. Nothing was sent."
     for _, _, path, confirm_id in found:  # every check before any request
         if not os.path.isabs(path):
             return f"{path} is neither an upload ID nor an absolute path to a file on this machine. Nothing was sent."
