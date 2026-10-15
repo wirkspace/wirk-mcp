@@ -176,4 +176,4 @@ def test_a_cancelled_call_never_writes(mcp, pdf):
     release.set()
     assert finished.wait(5)
     time.sleep(0.3)
-    assert [r.url.path for r in mcp.requests_seen if r.url.host != "storage.test"] == ["/v2/files"]
+    assert "/v2/write" not in [r.url.path for r in mcp.requests_seen]

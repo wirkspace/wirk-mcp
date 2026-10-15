@@ -88,7 +88,7 @@ def core(tmp_path, home, mcp, monkeypatch):
     """A scratch core whose administrator holds the agent token; `call` runs a tool through the MCP client."""
     config = tmp_path / "service.json"
     config.write_text(json.dumps({
-        "instance_id": "mcp-files-scratch", "database_path": str(tmp_path / "state.sqlite3"), "max_upload_bytes": 4096,
+        "instance_id": "mcp-files-scratch", "database_path": str(tmp_path / "state.sqlite3"), "max_upload_bytes": 16384,
         "tokens": [{"principal_id": "admin", "sha256": hashlib.sha256(TOKEN.encode()).hexdigest()}],
         "bootstrap": {"workspace_id": WORKSPACE, "name": "Scratch", "administrator_id": "admin"}}))
     config.chmod(0o600)
@@ -127,7 +127,7 @@ def evidence(tmp_path, *names, request_id="mcp-e2e-1", **extra):
 def originals(tmp_path):
     (tmp_path / "report.pdf").write_bytes(PDF)
     (tmp_path / "standup.m4a").write_bytes(AUDIO)
-    (tmp_path / "big.wav").write_bytes(b"\x01" * 5000)
+    (tmp_path / "big.wav").write_bytes(b"\x01" * 20000)
     return tmp_path
 
 

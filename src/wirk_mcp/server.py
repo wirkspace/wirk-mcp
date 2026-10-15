@@ -4,8 +4,12 @@ The HTTP client, configuration, token checks and the ID@N rule come from wirk-cl
 agent token is read; the person's own token is never opened here.
 """
 
+import copy
 import json
+import os
+import re
 import secrets
+import threading
 from pathlib import Path
 
 import anyio
@@ -13,14 +17,18 @@ import mcp_types as types
 from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 from wirk_cli import context, grammar
-from wirk_cli.cli import connect, local_zone, new_id, problem_text
+from wirk_cli.cli import connect, local_zone, new_id, problem_text, readable, store
 from wirk_cli.client import Failure, Service
+from wirk_cli.grammar import UsageError
 
 from . import __version__
 
 DEFINITIONS = json.loads((Path(__file__).parent / "tools.json").read_text())
 ROUTES = {"wirk_status": "/v2/status", "wirk_query": "/v2/query", "wirk_write": "/v2/write",
           "wirk_review": "/v2/review", "wirk_show": "/v2/show"}
+UPLOAD_ID = re.compile(r"(upload_)?[0-9a-f]{6,32}")  # core's form; any other string in a file key is a local path
+FILE_KEYS = {"item.create": ("data", "uploads"), "message.send": ("data", "uploads"),
+             "item.edit": ("patch", "attach_uploads")}
 SESSION = secrets.token_hex(8)  # one per server process, reported with status
 TRANSPORT = None  # tests put a fake service here
 SERVICES: list = []
@@ -35,8 +43,73 @@ def service() -> Service:
     return SERVICES[0]
 
 
-def call(name: str, arguments: dict, client: types.Implementation | None) -> tuple[str, bool]:
-    body = dict(arguments)
+class Cancelled(Exception):
+    pass
+
+
+class Watched:
+    """An open file whose reads stop once the call is cancelled, so no more bytes leave."""
+
+    def __init__(self, source, cancelled: threading.Event):
+        self.source, self.cancelled = source, cancelled
+
+    def read(self, size: int = -1) -> bytes:
+        if self.cancelled.is_set():
+            raise Cancelled
+        return self.source.read(size)
+
+    def seek(self, *where):
+        return self.source.seek(*where)
+
+
+def store_files(body: dict, cancelled: threading.Event) -> str | None:
+    """Replace each local path in the write's file keys with the upload it is stored as; a text means stop, and nothing
+    is written."""
+    found = []
+    for index, operation in enumerate(body.get("operations") or []):
+        part, key = FILE_KEYS.get(operation.get("op") if isinstance(operation, dict) else None, (None, None))
+        entries = (operation.get(part) or {}).get(key) if part else None
+        if isinstance(entries, list):
+            found += [(entries, n, entry, f"{body['request_id']}/{index}/{n}") for n, entry in enumerate(entries)
+                      if isinstance(entry, str) and not UPLOAD_ID.fullmatch(entry)]
+    for entries, n, given, request_id in found:  # every check before any request
+        if not os.path.isabs(os.path.expanduser(given)):
+            return f"{given} is neither an upload ID nor an absolute path to a file on this machine. Nothing was sent."
+        if len(request_id) > 200:
+            return f"request_id is too long to name the uploads of its files (at most 200 characters with /{index}/{n} added). Nothing was sent."
+        try:
+            with readable(os.path.expanduser(given)):
+                pass
+        except UsageError as error:
+            return f"{error}. Nothing was sent."
+    stored = []
+    for entries, n, given, request_id in found:
+        try:
+            with readable(os.path.expanduser(given)) as source:
+                answer = store(Watched(source, cancelled), given, request_id, "", service(), workspace_id=body.get("workspace_id"))
+        except Failure as failure:  # storage or an unknown outcome: the client's own words, without its CLI hint
+            answer = {"ok": False, "errors": [{"code": failure.code, "message": str(failure)}]}
+        except Cancelled:
+            return "Cancelled; nothing was written."
+        if not answer["ok"]:
+            lines = [f"{Path(given).name}: {problem_text(answer)}"]
+            if stored:
+                lines.append(f"Stored but attached to nothing: {', '.join(stored)}.")
+            if answer["errors"][0]["code"] == "request_conflict":
+                lines.append(f"Nothing was written. A file or path changed since request_id {body['request_id']} was "
+                             "first used: send these arguments under a new request_id.")
+            else:
+                lines.append(f"Nothing was written. Resend the identical arguments with request_id {body['request_id']}"
+                             " to retry; stored files are reused, and changed arguments need a new request_id.")
+            return "\n".join(lines)
+        entries[n] = answer["data"]["upload"]["id"]
+        stored.append(Path(given).name)
+    return "Cancelled; nothing was written." if cancelled.is_set() else None
+
+
+def call(name: str, arguments: dict, client: types.Implementation | None,
+         cancelled: threading.Event | None = None) -> tuple[str, bool]:
+    body = copy.deepcopy(arguments)
     if name == "wirk_query" and body.get("fetch"):
         body["fetch"] = [grammar.ref(ref) if isinstance(ref, str) else ref for ref in body["fetch"]]
     if name in ("wirk_write", "wirk_review"):
@@ -44,6 +117,8 @@ def call(name: str, arguments: dict, client: types.Implementation | None) -> tup
     if name == "wirk_show" and "revoke" not in body and local_zone():
         body.setdefault("timezone", local_zone())
     body.setdefault("format", "text")
+    if name == "wirk_write" and (stopped := store_files(body, cancelled or threading.Event())):
+        return stopped, True
     headers = {"Wirk-Context": context.header(client.name if client else "", client.version if client else "", SESSION)} \
         if name == "wirk_status" else None
     try:
@@ -69,7 +144,13 @@ async def call_tool(ctx, params: types.CallToolRequestParams) -> types.CallToolR
     if params.name not in ROUTES:
         return types.CallToolResult(content=[types.TextContent(text=f"Unknown tool {params.name}")], is_error=True)
     client = ctx.session.client_params.client_info if ctx.session.client_params else None
-    text, failed = await anyio.to_thread.run_sync(call, params.name, params.arguments or {}, client)
+    cancelled = threading.Event()  # a host that gives up cancels this call; the thread then never writes
+    try:
+        text, failed = await anyio.to_thread.run_sync(call, params.name, params.arguments or {}, client, cancelled,
+                                                      abandon_on_cancel=True)
+    except anyio.get_cancelled_exc_class():
+        cancelled.set()
+        raise
     return types.CallToolResult(content=[types.TextContent(text=text)], is_error=failed)
 
 
