@@ -67,9 +67,11 @@ def store_files(body: dict, cancelled: threading.Event) -> str | None:
     """Store each local path in the write's file keys and put its upload ID in its place. A returned text means stop:
     nothing is written."""
     request_id, found = body["request_id"], []
-    for index, operation in enumerate(body.get("operations") or []):
-        part, key = FILE_KEYS.get(operation.get("op") if isinstance(operation, dict) else None, (None, None))
-        entries = (operation.get(part) or {}).get(key) if part else None
+    operations = body.get("operations")
+    for index, operation in enumerate(operations if isinstance(operations, list) else []):
+        op = operation.get("op") if isinstance(operation, dict) else None  # other shapes go to the service untouched
+        holder = operation.get(FILE_KEYS[op][0]) if isinstance(op, str) and op in FILE_KEYS else None
+        entries = holder.get(FILE_KEYS[op][1]) if isinstance(holder, dict) else None
         if isinstance(entries, list):
             found += [(entries, n, os.path.expanduser(entry), f"{request_id}/{index}/{n}") for n, entry in enumerate(entries)
                       if isinstance(entry, str) and not UPLOAD_ID.fullmatch(entry)]
