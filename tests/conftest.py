@@ -60,6 +60,11 @@ def mcp(home, monkeypatch):
             return result, list(requests)
 
         @staticmethod
+        def session_call(tool, arguments):
+            """A call over whatever TRANSPORT the test set."""
+            return anyio.run(session, lambda client: client.call_tool(tool, arguments))
+
+        @staticmethod
         def tools():
             return anyio.run(session, lambda client: client.list_tools()).tools
 
