@@ -3,14 +3,14 @@
  "tools": [
   {
    "name": "wirk_status",
-   "description": "Start here: who you work for, your wirk, what waits, recent changes and how to ask for more. Writes nothing.",
+   "description": "Start here: who you work for, your wirk, what waits, and recent changes. Writes nothing.",
    "inputSchema": {
     "type": "object",
     "additionalProperties": false,
     "properties": {
      "task": {
       "type": "string",
-      "description": "Optional one line about your task; the items that matter for it are listed."
+      "description": "One line about your task; items that matter for it are listed."
      },
      "workspace_id": {
       "type": "string",
@@ -24,8 +24,7 @@
       "enum": [
        "text",
        "json"
-      ],
-      "description": "text (default) or json."
+      ]
      }
     }
    }
@@ -114,14 +113,14 @@
     "properties": {
      "request_id": {
       "type": "string",
-      "description": "Optional; generated and named in the receipt. After an uncertain result, resend with that ID."
+      "description": "Optional; named in the receipt; set your own when attaching files. After an uncertain result, resend with that ID."
      },
      "operations": {
       "type": "array",
       "items": {
        "type": "object"
       },
-      "description": "1-32 of: {op:item.create, ref?, data:{title, body?, work?:{owner_id?, due_at?, criteria?:[{text}]}, context?:{level, state?, steward_id?, open?}, fields?}, allow_duplicate_of?} · {op:item.edit, id, patch:{title?, body?, work?, fields?}} · {op:link.create, data:{type, from, to}}, type related_to, contributes_to, requires, cites, relies_on or works_at (a person record to a company record), from/to may be $ref of a new item; a cites quotation must match the cited text exactly, or quotation_mismatch · {op:link.remove, id} · {op:item.archive, id} · {op:item.restore, id} · {op:message.send, ref?, data:{body, title?, to?:[principal], reply_to?}} · {op:message.acknowledge, messages:[ID]}. work makes an item work, context makes it context (level organization or initiative); fields maps a field to an option, null clears."
+      "description": "1-32 of: {op:item.create, ref?, data:{title, body?, work?:{owner_id?, due_at?, criteria?:[{text}]}, context?:{level, state?, steward_id?, open?}, fields?, uploads?}, allow_duplicate_of?} · {op:item.edit, id, patch:{title?, body?, work?, fields?, attach_uploads?}} · {op:link.create, data:{type, from, to}}, type related_to, contributes_to, requires, cites, relies_on or works_at (a person record to a company record), from/to may be $ref of a new item; a cites quotation must match the cited text exactly, or quotation_mismatch · {op:link.remove, id} · {op:item.archive, id} · {op:item.restore, id} · {op:message.send, ref?, data:{body, title?, to?:[principal], reply_to?, uploads?}} · {op:message.acknowledge, messages:[ID]}. work makes an item work, context makes it context (level organization or initiative); fields maps a field to an option, null clears. uploads/attach_uploads: upload IDs or absolute local file paths, stored first; if one fails nothing is written."
      },
      "expect": {
       "type": "object",
@@ -153,7 +152,7 @@
   },
   {
    "name": "wirk_review",
-   "description": "Accept, reject or defer proposals at the revision you read. Anyone whose role may review decides, a person or their agent; other roles are refused not_authorized. A background agent only proposes, never decides.",
+   "description": "Accept, reject or defer proposals at the revision you read. Anyone whose role may review decides; other roles get not_authorized. A background agent never decides.",
    "inputSchema": {
     "type": "object",
     "required": [
@@ -162,8 +161,7 @@
     "additionalProperties": false,
     "properties": {
      "request_id": {
-      "type": "string",
-      "description": "Optional; generated and named in the answer."
+      "type": "string"
      },
      "decisions": {
       "type": "array",
