@@ -46,7 +46,7 @@ Limits, the CLI's own:
 
    A refused write (for example `basis_changed`) is core's answer unchanged, and core applies nothing.
 
-**B1, cancellation and host timeouts.** `call_tool` runs `call` in a worker thread. A host that gives up (Codex's per-call default is about 60 seconds) cancels the request. `call_tool` then sets a per-call cancel flag and returns at once (`abandon_on_cancel`). The thread checks the flag between file chunks and before the write, and never sends the write once it is set. Files stored by then stay unattached. A resend under the agent's own `request_id` reuses them; a server-made ID is lost with the cancelled answer, hence the description line.
+**B1, cancellation and host timeouts.** `call_tool` runs `call` in a worker thread. A host that gives up at its per-call timeout (often about 60 seconds) cancels the request. `call_tool` then sets a per-call cancel flag and returns at once (`abandon_on_cancel`). The thread checks the flag between file chunks and before the write, and never sends the write once it is set. Files stored by then stay unattached. A resend under the agent's own `request_id` reuses them; a server-made ID is lost with the cancelled answer, hence the description line.
 
 ## Atomicity
 
