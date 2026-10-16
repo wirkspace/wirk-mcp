@@ -230,7 +230,7 @@ def test_messages_are_described_and_their_footer_comes_last(mcp):
     """docs/plans/messaging.md §8: the two operations, the filters, and notifications printed last in JSON."""
     tools = {t["name"]: t for t in definitions(mcp.tools())}
     operations = tools["wirk_write"]["inputSchema"]["properties"]["operations"]["description"]
-    assert "{op:message.send, ref?, data:{body, title?, to?:[principal], reply_to?}}" in operations
+    assert "{op:message.send, ref?, data:{body, title?, to?:[principal], reply_to?, uploads?}}" in operations
     assert "{op:message.acknowledge, messages:[ID]}" in operations
     fields = tools["wirk_query"]["inputSchema"]["properties"]["fields"]["description"]
     assert "message" in fields and "inbox=me" in fields and "participant" in fields

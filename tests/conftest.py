@@ -53,11 +53,16 @@ def mcp(home, monkeypatch):
         requests_seen = requests
 
         @staticmethod
-        def call(tool, arguments, answer=lambda request: envelope()):
+        def call(tool, arguments, answer=lambda request: envelope(), timeout=None):
             use(answer)
             requests.clear()
-            result = anyio.run(session, lambda client: client.call_tool(tool, arguments))
+            result = anyio.run(session, lambda client: client.call_tool(tool, arguments, read_timeout_seconds=timeout))
             return result, list(requests)
+
+        @staticmethod
+        def session_call(tool, arguments):
+            """A call over whatever TRANSPORT the test set."""
+            return anyio.run(session, lambda client: client.call_tool(tool, arguments))
 
         @staticmethod
         def tools():
