@@ -26,7 +26,7 @@ codex mcp add wirk -- "$(command -v wirk-mcp)"                    # Codex
 
 Package releases are also listed on [GitHub](https://github.com/wirkspace/wirk-mcp/releases).
 
-The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart. In a supported Codex chat, `wirk_status` reports `actor_setup_required` until that chat runs `wirk login` once; the host request metadata selects its private actor credential. A new chat or fork enrolls separately; resuming uses the retained credential. A named worker may use its own absolute `WIRK_ACTOR_HOME`. Other hosts continue with the explicitly shared legacy machine identity until their chat binding is qualified.
+The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart. In a Codex CLI chat with verified host request metadata, `wirk_status` reports `actor_setup_required` until that chat runs `wirk login` once; the host metadata selects its private actor credential. A new CLI chat or fork enrolls separately; resuming uses the retained credential. A named worker may use its own absolute `WIRK_ACTOR_HOME`. Codex desktop, helper agents, Claude Code, and other hosts have not yet been qualified for distinct chat binding. Without a verified binding they continue with the explicitly shared legacy machine identity.
 
 ## Use
 
