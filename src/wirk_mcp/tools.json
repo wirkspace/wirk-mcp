@@ -31,7 +31,7 @@
   },
   {
    "name": "wirk_query",
-   "description": "Fetch by ID, short ID or exact title; list with fields; find what matters for about (by meaning on Pro); or look up a receipt. A result \"label: query …\" maps bare refs to fetch, known keys to arguments, other KEY=VALUE to fields (comma values as lists).",
+   "description": "Fetch by ID/title, list with fields, search about (by meaning on Pro), or get a receipt. A result \"label: query …\" maps refs to fetch and KEY=VALUE to fields.",
    "inputSchema": {
     "type": "object",
     "additionalProperties": false,
@@ -56,7 +56,7 @@
      },
      "fields": {
       "type": "object",
-      "description": "Filters, e.g. {\"status\": [\"open\"], \"kind\": \"work\", \"owner\": \"me\", \"linked\": \"ID\", \"changed_days\": 7}; kind: work, context, folder, record, message; inbox=me: your unseen messages; participant=[ID]: by or to; state is an initiative's; proposal=[\"proposed\"] lists proposals."
+      "description": "Filters, e.g. {\"status\": [\"open\"], \"kind\": \"work\", \"owner\": \"me\", \"assigned\": \"me\", \"linked\": \"ID\", \"changed_days\": 7}; kind: work, context, folder, record, message; inbox=me: unseen; participant=[ID]: by or to; proposal=[\"proposed\"] lists proposals."
      },
      "wait": {
       "type": "integer",
@@ -103,7 +103,7 @@
   },
   {
    "name": "wirk_write",
-   "description": "Change items and links atomically. In expect put each changed or linked-from item’s rN and the parent work of a contributes_to link; missing revisions get basis_changed. Context changes apply when you may make them; requires_review means propose with a reason.",
+   "description": "Change items and links atomically. Set work.agent_id for one actor; item.edit work merges the patch, retaining owner_id, due_at and criteria. In expect put each changed item’s rN and the parent work of a contributes_to link; missing revisions get basis_changed. Context changes apply when you may make them; requires_review means propose with a reason.",
    "inputSchema": {
     "type": "object",
     "required": [
