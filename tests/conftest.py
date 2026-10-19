@@ -1,11 +1,13 @@
 """An in-process MCP client talking to the server, and a fake WIRK service behind it."""
 
 import json
+import sys
 
 import anyio
 import httpx
 import pytest
 from mcp import Client
+from mcp.client.stdio import StdioServerParameters
 from mcp_types import Implementation
 
 from wirk_mcp import server
@@ -45,8 +47,8 @@ def mcp(home, monkeypatch):
         monkeypatch.setattr(server, "TRANSPORT", httpx.MockTransport(handler))
         server.SERVICES.clear()
 
-    async def session(work):
-        async with Client(server.SERVER, client_info=Implementation(name="Claude Code", version="2.1.281")) as client:
+    async def session(work, transport=server.SERVER):
+        async with Client(transport, client_info=Implementation(name="Claude Code", version="2.1.281")) as client:
             return await work(client)
 
     class Session:
@@ -65,8 +67,10 @@ def mcp(home, monkeypatch):
             return anyio.run(session, lambda client: client.call_tool(tool, arguments))
 
         @staticmethod
-        def tools():
-            return anyio.run(session, lambda client: client.list_tools()).tools
+        def tools(*, stdio=False):
+            transport = StdioServerParameters(command=sys.executable, args=["-m", "wirk_mcp"],
+                                               env={"WIRK_CONFIG_DIR": str(home)}) if stdio else server.SERVER
+            return anyio.run(session, lambda client: client.list_tools(), transport).tools
 
         @staticmethod
         def instructions():
