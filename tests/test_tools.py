@@ -17,6 +17,17 @@ def definitions(tools):
     return [{"name": t.name, "description": t.description, "inputSchema": t.input_schema} for t in tools]
 
 
+@pytest.mark.parametrize("stdio", [False, True], ids=["in-process", "stdio"])
+def test_tools_list_returns_exact_annotations(mcp, stdio):
+    tools = mcp.tools(stdio=stdio)
+    assert {tool.name: tool.annotations.model_dump(by_alias=True, exclude_none=True)
+            if tool.annotations is not None else None for tool in tools} == {
+        name: {"readOnlyHint": read_only, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False}
+        for name, read_only in [("wirk_status", True), ("wirk_query", True), ("wirk_write", False),
+                                ("wirk_review", False), ("wirk_show", False)]
+    }
+
+
 def test_exactly_five_compact_tools(mcp):
     tools = definitions(mcp.tools())
     assert [t["name"] for t in tools] == NAMES

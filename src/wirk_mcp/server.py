@@ -140,7 +140,9 @@ def call(name: str, arguments: dict, client: types.Implementation | None, cancel
 
 async def list_tools(ctx, params) -> types.ListToolsResult:
     return types.ListToolsResult(tools=[types.Tool(name=tool["name"], description=tool["description"],
-                                                   input_schema=tool["inputSchema"]) for tool in DEFINITIONS["tools"]])
+                                                   input_schema=tool["inputSchema"],
+                                                   annotations=types.ToolAnnotations.model_validate(tool["annotations"]))
+                                       for tool in DEFINITIONS["tools"]])
 
 
 async def call_tool(ctx, params: types.CallToolRequestParams) -> types.CallToolResult:

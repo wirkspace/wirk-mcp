@@ -3,6 +3,12 @@
  "tools": [
   {
    "name": "wirk_status",
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+   },
    "description": "Start here: who you work for, your wirk, what waits, and recent changes. Writes nothing.",
    "inputSchema": {
     "type": "object",
@@ -31,6 +37,12 @@
   },
   {
    "name": "wirk_query",
+   "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+   },
    "description": "Fetch by ID, short ID or exact title; list with fields; find what matters for about (by meaning on Pro); or look up a receipt. A result \"label: query …\" maps bare refs to fetch, known keys to arguments, other KEY=VALUE to fields (comma values as lists).",
    "inputSchema": {
     "type": "object",
@@ -103,6 +115,12 @@
   },
   {
    "name": "wirk_write",
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+   },
    "description": "Change items and links atomically. In expect put each changed or linked-from item’s rN and the parent work of a contributes_to link; missing revisions get basis_changed. Context changes apply when you may make them; requires_review means propose with a reason.",
    "inputSchema": {
     "type": "object",
@@ -152,6 +170,12 @@
   },
   {
    "name": "wirk_review",
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+   },
    "description": "Accept, reject or defer proposals at the revision you read. Anyone whose role may review decides; other roles get not_authorized. A background agent never decides.",
    "inputSchema": {
     "type": "object",
@@ -210,6 +234,12 @@
   },
   {
    "name": "wirk_show",
+   "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+   },
    "description": "A live read-only page for a person, from the preset status or a view config; returns its link. Anyone with the link can open it until it expires after 24 hours.",
    "inputSchema": {
     "type": "object",
