@@ -55,10 +55,11 @@ def mcp(home, monkeypatch):
         requests_seen = requests
 
         @staticmethod
-        def call(tool, arguments, answer=lambda request: envelope(), timeout=None):
+        def call(tool, arguments, answer=lambda request: envelope(), timeout=None, meta=None):
             use(answer)
             requests.clear()
-            result = anyio.run(session, lambda client: client.call_tool(tool, arguments, read_timeout_seconds=timeout))
+            result = anyio.run(session, lambda client: client.call_tool(tool, arguments, read_timeout_seconds=timeout,
+                                                                        meta=meta))
             return result, list(requests)
 
         @staticmethod
@@ -78,3 +79,10 @@ def mcp(home, monkeypatch):
                 return client.instructions
             return anyio.run(session, work)
     return Session
+
+
+@pytest.fixture(autouse=True)
+def outside_any_chat(monkeypatch):
+    """Tests run outside an agent chat unless they set one: the IDs of the chat running them never reach them."""
+    for name in ("CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID"):
+        monkeypatch.delenv(name, raising=False)
