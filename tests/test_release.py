@@ -16,7 +16,7 @@ def test_depends_on_the_wirk_package_by_name():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
     assert project["name"] == "wirk-mcp"
     assert "wirk==0.4.24" in project["dependencies"]  # the CLI this server was tested with, published as wirk
-    assert project["version"] == __import__("wirk_mcp").__version__ == "0.4.24"
+    assert project["version"] == __import__("wirk_mcp").__version__ == "0.4.25"
     assert not any("git+" in dependency for dependency in project["dependencies"])  # PyPI refuses direct references
 
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "wirk-mcp"
-version = "0.4.24"
+version = "0.4.25"
 description = "WIRK's five tools for agents over MCP: status, query, write, review and show"
 readme = "README.md"
 license = "Apache-2.0"

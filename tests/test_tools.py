@@ -290,3 +290,10 @@ def test_query_sort_and_fetch_example_mirror_the_cli_query_help(mcp):
     assert sort in cli_help and fetch in cli_help
     query = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_query")["inputSchema"]["properties"]
     assert query["sort"]["description"] == sort and fetch in query["fetch"]["description"]
+
+
+def test_catchups_answer_from_wirk_and_offer_to_check_code(mcp):
+    """Fresh catch-up trials started from WIRK but still read the repository every time: code only on request."""
+    text = mcp.instructions()
+    assert "answer from WIRK, reading code only to implement or when asked to verify; else offer to check" in text
+    assert "Check code or external sources" not in text
