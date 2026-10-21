@@ -173,9 +173,9 @@ def test_the_person_token_is_never_opened(mcp, home, monkeypatch):
     (home / "person-token").write_text("wirk_" + "b" * 43)
     (home / "person-token").chmod(0o600)
     opened = []
-    from wirk_cli import cli
-    real = cli.read_token
-    monkeypatch.setattr(cli, "read_token", lambda path: opened.append(path.name) or real(path))
+    from wirk_cli import client
+    real = client.read_token
+    monkeypatch.setattr(client, "read_token", lambda path: opened.append(path.name) or real(path))
     for tool in NAMES:
         mcp.call(tool, {"wirk_write": {"operations": []}, "wirk_review": {"decisions": []}}.get(tool, {}))
     assert set(opened) == {"agent-token"}

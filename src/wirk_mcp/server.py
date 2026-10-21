@@ -1,8 +1,9 @@
 """Five tools over the WIRK service: the arguments are the v2 request bodies, except that a write's uploads and
 attach_uploads may name local files, which are stored first; the answer is the service's text.
 
-The HTTP client, configuration, token checks and the ID@N rule come from wirk-cli, so each exists once. Only the
-agent token is read; the person's own token is never opened here.
+The HTTP client, configuration, token checks and the ID@N rule come from wirk-cli, so each exists once. In an agent
+chat the chat's own token is used (its MCP thread, or the chat IDs in this server's environment); otherwise the
+machine's agent token. The person's own token is never opened here.
 """
 
 import copy
@@ -154,8 +155,7 @@ async def call_tool(ctx, params: types.CallToolRequestParams) -> types.CallToolR
         return types.CallToolResult(content=[types.TextContent(text=f"Unknown tool {params.name}")], is_error=True)
     client = ctx.session.client_params.client_info if ctx.session.client_params else None
     cancelled = threading.Event()  # a host that gives up cancels this call; the thread then never writes
-    meta = getattr(params, "meta", None) or {}
-    actor_id = meta.get("threadId") if isinstance(meta, dict) else None
+    actor_id = (params.meta or {}).get("threadId")  # the host's chat, never a tool argument
     try:
         text, failed = await anyio.to_thread.run_sync(call, params.name, params.arguments or {}, client, cancelled,
                                                       actor_id, abandon_on_cancel=True)
