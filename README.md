@@ -32,7 +32,7 @@ The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK
 
 For catch-ups about status, priorities or blockers, use `wirk_status` for breadth. Batch a few visible work and decision leads in the first `wirk_query`, then follow selected links or truncated details in the next before naming specific blockers, owners or next work. Cards and counts are leads; stop when evidence suffices and name gaps. Catch-ups are read-only and answered from WIRK: read the repository or other sources only to implement or when asked to verify, and otherwise offer to check. Old handoffs and age do not establish release or worker state. Direct MCP is preferred; the CLI also works.
 
-An agent starts with `wirk_status`, optionally with a one-line `task`. `wirk_query` fetches by ID, short ID or exact title, lists with `fields`, finds what matters for the words in `about`, or looks up a `receipt`. `wirk_write` changes items and links in one batch, stating in `expect` the revision it read (`rN` on a card); completing wirk gives its evidence as `reason`. Context changes apply when the agent may make them; otherwise they are refused with `requires_review` and the agent proposes them. `wirk_review` accepts, rejects or defers proposals when the agent's role may review; a background agent only proposes. `wirk_show` returns a link to a live, read-only page for a person; anyone with the link can open it until it expires after 24 hours. `format: "json"` returns data instead of text. `request_id` may be left out: the server makes one and names it, and resending the identical body with it applies once.
+An agent starts with `wirk_status`, optionally with a one-line `task`. `wirk_query` fetches by ID, short ID or exact title, lists with `fields`, finds what matters for the words in `about`, or looks up a `receipt`. `wirk_write` changes items and links in one batch, stating in `expect` the revision it read (`rN` on a card); completing wirk gives its evidence as `reason`. Context changes apply when the agent may make them; otherwise they are refused with `requires_review` and the agent proposes them. `wirk_review` accepts, rejects or defers proposals when the agent's role may review; a background agent only proposes. `wirk_show` returns a link to a live, read-only page for a person; anyone with the link can open it until it expires after 24 hours. `wirk_status` and `wirk_query` are annotated read-only. In `wirk_write`, `uploads` (on `item.create` and `message.send`) and `attach_uploads` (on `item.edit`) take upload IDs or absolute local file paths: the server stores each file first and sends the write only when every file is stored; set your own `request_id` when attaching files. `format: "json"` returns data instead of text. `request_id` may be left out: the server makes one and names it, and resending the identical body with it applies once.
 
 ## What leaves the machine
 
@@ -44,16 +44,10 @@ The tests need the `wirk` package installed beside this one: `uv pip install -e 
 
 ## Releasing
 
-A `v*` tag matching `pyproject.toml`'s version tests against the `wirk` release of the same version, attaches the wheel, the sdist and `SHA256SUMS` to a GitHub Release, and publishes to PyPI through trusted publishing once the `wirk-mcp` project trusts this repository's `release.yml` in the `pypi` environment and the repository variable `PYPI_PUBLISH` is `true`. No token is stored anywhere.
+A release is a version bump merged to main with `Release: publish wirk-mcp <version>` in its squash body; the version must equal the `wirk==` pin in `pyproject.toml`. After the release check passes on that exact commit, the tag `v<version>` is created there; pushing main publishes nothing, and a tag is never moved. The tag's Release workflow waits up to ten minutes for the `wirk` release of the same version, tests against that public CLI wheel, attaches the wheel, the sdist and `SHA256SUMS` to a GitHub Release, and publishes to PyPI through trusted publishing; no token is stored anywhere.
+
+Release `wirk` first: a tag whose matching `wirk` release does not exist fails and stays unpublished, and the next version is released in step instead of moving the tag. New GitHub releases stay prereleases until their downloaded public bytes match the build and a clean public installation passes. Retry failed jobs to reuse the successful build artifacts: identical existing assets are retained, missing assets are uploaded, and differing bytes or a moved tag stop the run. The Release workflow's manual verification input checks an existing public tag without publishing. Publication does not update already-installed or running clients.
 
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
-
-### Automated publication
-
-Push the exact reviewed version tags for the CLI, MCP and skill. Each existing Release workflow then tests and publishes its component; MCP and skill wait up to ten minutes for the matching CLI wheel and its identical PyPI distribution. Tags choose reviewed source; pushing main does not publish a release.
-
-New GitHub releases stay prereleases until their downloaded public bytes match the build and a clean public installation passes. The shared publication workflow is pinned to an exact revision. Failures appear in Actions. Retry failed jobs to reuse the successful build artifacts: identical existing assets are retained, missing assets are uploaded, and differing bytes or a moved tag stop the run. Do not overwrite a published asset to make a retry pass.
-
-The Release workflow's manual verification input checks an existing public tag without publishing. This publication automation does not update already-installed or running clients.
