@@ -26,7 +26,7 @@ codex mcp add wirk -- "$(command -v wirk-mcp)"                    # Codex
 
 Package releases are also listed on [GitHub](https://github.com/wirkspace/wirk-mcp/releases).
 
-The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart.
+The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart. In an agent chat it uses that chat's own token instead, the one `wirk login` in the chat made: the chat is recognised by the thread ID a Codex request carries (or `CODEX_THREAD_ID`) and by `CLAUDE_CODE_SESSION_ID` in the server's environment (Claude Code, in the terminal and the desktop app), never by a tool argument. Until the chat has run `wirk login`, its calls answer `actor_setup_required`.
 
 ## Use
 

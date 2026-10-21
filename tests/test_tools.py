@@ -173,9 +173,9 @@ def test_the_person_token_is_never_opened(mcp, home, monkeypatch):
     (home / "person-token").write_text("wirk_" + "b" * 43)
     (home / "person-token").chmod(0o600)
     opened = []
-    from wirk_cli import cli
-    real = cli.read_token
-    monkeypatch.setattr(cli, "read_token", lambda path: opened.append(path.name) or real(path))
+    from wirk_cli import client
+    real = client.read_token
+    monkeypatch.setattr(client, "read_token", lambda path: opened.append(path.name) or real(path))
     for tool in NAMES:
         mcp.call(tool, {"wirk_write": {"operations": []}, "wirk_review": {"decisions": []}}.get(tool, {}))
     assert set(opened) == {"agent-token"}
@@ -213,7 +213,7 @@ def test_privacy_wording_and_no_v1():
 def test_the_package_pins_the_tested_cli():
     import tomllib
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-    assert "wirk==0.4.16" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
+    assert "wirk==0.4.23" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
 
 
 def test_an_unknown_outcome_is_worded_for_mcp(mcp):

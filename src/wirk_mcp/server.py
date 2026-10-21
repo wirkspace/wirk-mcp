@@ -1,8 +1,9 @@
 """Five tools over the WIRK service: the arguments are the v2 request bodies, except that a write's uploads and
 attach_uploads may name local files, which are stored first; the answer is the service's text.
 
-The HTTP client, configuration, token checks and the ID@N rule come from wirk-cli, so each exists once. Only the
-agent token is read; the person's own token is never opened here.
+The HTTP client, configuration, token checks and the ID@N rule come from wirk-cli, so each exists once. In an agent
+chat the chat's own token is used (its MCP thread, or the chat IDs in this server's environment); otherwise the
+machine's agent token. The person's own token is never opened here.
 """
 
 import copy
@@ -38,13 +39,15 @@ TRANSPORT = None  # tests put a fake service here
 SERVICES: list = []
 
 
-def service() -> Service:
-    """The CLI's connection with the agent token, kept while the configuration holds so its connections are reused;
-    a new login needs no restart."""
-    fresh = connect(TRANSPORT)
-    if not (SERVICES and SERVICES[0].same(fresh)):
-        SERVICES[:] = [fresh]
-    return SERVICES[0]
+def service(actor_id: str | None = None) -> Service:
+    """The CLI's connection with the agent token, or with the token of the chat a request comes from, kept while the
+    configuration holds so its connections are reused; a new login needs no restart."""
+    fresh = connect(TRANSPORT, actor_id=actor_id)
+    cached = SERVICES[0] if SERVICES else None
+    if cached and cached.same(fresh):
+        return cached
+    SERVICES[:] = [fresh]
+    return fresh
 
 
 class Watched:
@@ -62,7 +65,7 @@ class Watched:
         return self.source.seek(*where)
 
 
-def store_files(body: dict, cancelled: threading.Event) -> str | None:
+def store_files(body: dict, cancelled: threading.Event, active: Service) -> str | None:
     """Store each local path in the write's file keys and put its upload ID in its place. A returned text means stop:
     nothing is written."""
     request_id, found = body["request_id"], []
@@ -90,7 +93,7 @@ def store_files(body: dict, cancelled: threading.Event) -> str | None:
     for entries, n, path, confirm_id in found:
         try:
             with readable(path) as source:
-                answer = store(Watched(source, cancelled), path, confirm_id, "", service(),
+                answer = store(Watched(source, cancelled), path, confirm_id, "", active,
                                workspace_id=body.get("workspace_id"))
             code, said = (None, None) if answer["ok"] else (answer["errors"][0]["code"], problem_text(answer))
         except Failure as failure:  # storage, an unknown outcome or a cancel, in the client's words without its CLI hint
@@ -110,7 +113,8 @@ def store_files(body: dict, cancelled: threading.Event) -> str | None:
     return "Cancelled; nothing was written." if cancelled.is_set() else None
 
 
-def call(name: str, arguments: dict, client: types.Implementation | None, cancelled: threading.Event) -> tuple[str, bool]:
+def call(name: str, arguments: dict, client: types.Implementation | None, cancelled: threading.Event,
+         actor_id: str | None = None) -> tuple[str, bool]:
     body = copy.deepcopy(arguments)
     if name == "wirk_query" and body.get("fetch"):
         body["fetch"] = [grammar.ref(ref) if isinstance(ref, str) else ref for ref in body["fetch"]]
@@ -119,14 +123,15 @@ def call(name: str, arguments: dict, client: types.Implementation | None, cancel
     if name == "wirk_show" and "revoke" not in body and local_zone():
         body.setdefault("timezone", local_zone())
     body.setdefault("format", "text")
-    if name == "wirk_write" and (stopped := store_files(body, cancelled)):
-        return stopped, True
-    # a cancel landing after store_files' last check still sends this write; its request_id keeps it idempotent
     headers = {"Wirk-Context": context.header(client.name if client else "", client.version if client else "", SESSION)} \
         if name == "wirk_status" else None
     try:
-        answer = service().post(ROUTES[name], body, uncertain=body.get("request_id"), resend=name != "wirk_show",
-                                headers=headers)
+        active = service(actor_id)  # the chat's own token when it has one, for the files and the write alike
+        if name == "wirk_write" and (stopped := store_files(body, cancelled, active)):
+            return stopped, True
+        # a cancel landing after store_files' last check still sends this write; its request_id keeps it idempotent
+        answer = active.post(ROUTES[name], body, uncertain=body.get("request_id"), resend=name != "wirk_show",
+                             headers=headers)
     except Failure as failure:
         if failure.code == "outcome_unknown":  # the retry in MCP's terms: the same arguments, the same request_id
             failure.hint = (f"Resend the identical arguments with request_id {body['request_id']}: it applies once or "
@@ -150,9 +155,10 @@ async def call_tool(ctx, params: types.CallToolRequestParams) -> types.CallToolR
         return types.CallToolResult(content=[types.TextContent(text=f"Unknown tool {params.name}")], is_error=True)
     client = ctx.session.client_params.client_info if ctx.session.client_params else None
     cancelled = threading.Event()  # a host that gives up cancels this call; the thread then never writes
+    actor_id = (params.meta or {}).get("threadId")  # the host's chat, never a tool argument
     try:
         text, failed = await anyio.to_thread.run_sync(call, params.name, params.arguments or {}, client, cancelled,
-                                                      abandon_on_cancel=True)
+                                                      actor_id, abandon_on_cancel=True)
     except anyio.get_cancelled_exc_class():
         cancelled.set()
         raise
