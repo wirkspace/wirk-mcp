@@ -31,9 +31,10 @@ def test_tools_list_returns_exact_annotations(mcp, stdio):
 def test_exactly_five_compact_tools(mcp):
     tools = definitions(mcp.tools())
     assert [t["name"] for t in tools] == NAMES
-    # 5120 before the inbox wait key, 5250 before the sort values and the fetch example, 5450 before works_at
-    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5494
-    assert len(mcp.instructions().encode()) <= 900
+    # 5120 before the inbox wait key, 5250 before the sort values and the fetch example, 5450 before works_at,
+    # 5494 and 900 before the reservation patch, board posts, owner me, the text filter and the cites keys
+    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5849
+    assert len(mcp.instructions().encode()) <= 1056
     assert "$defs" not in json.dumps(tools)
 
     def walk(node):
@@ -69,12 +70,37 @@ def test_agent_text_says_who_decides_what_is_live_and_what_refusals_mean(mcp):
     assert "quotation_mismatch" in json.dumps(definitions(mcp.tools()))
 
 
-def test_agents_claim_wirk_before_starting_it(mcp):
-    """Samuel, 5 October: claim before starting, so agents sharing one principal don't pick up the same work."""
+def test_agents_reserve_wirk_before_starting_it(mcp):
+    """Samuel, 5 and 19 October: reserve before starting, so agents sharing one principal don't pick up the same work;
+    the reservation is the item's own field, set at the revision read, not words in the body."""
     text = mcp.instructions()
-    assert "Fetch before work" in text and "leave in_progress or other claims alone" in text
-    assert "Claim in_progress, owner me" in text and "session, branch and files" in text
-    assert "above the old body as a reservation" in text  # preserve the body; a claim is not a lock
+    assert "Fetch before work" in text and "never start an item whose card says reservation occupied:G" in text
+    assert "in one item.edit at the rN you read" in text and "session, branch and files above the old body" in text
+    assert "keep its G" in text and "vacant:G" in text and "completing releases it" in text
+
+
+def test_write_says_what_the_clis_write_help_says(mcp):
+    """Parity audit, 23 October: the MCP text leaves out the reservation patch, owner me, board posts and the cites
+    keys that the CLI's write help documents; the shared words are asserted in both."""
+    from wirk_cli.help import HELP
+    cli_help = " ".join(HELP["write"].split())
+    operations = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_write")[
+        "inputSchema"]["properties"]["operations"]["description"]
+    assert "patch:{title?, body?, work?, fields?, reservation?, attach_uploads?}" in operations
+    for shared in ["occupied:G guards any edit; vacant:G releases; replace:G takes over", "(me or an ID)",
+                   "a cites link also takes target_revision, selector, relation and quotation: the exact text, else "
+                   "quotation_mismatch"]:
+        assert shared in cli_help and shared in operations, shared
+    assert "work?:{owner_id? (me or an ID)" in operations
+    assert "on an item's board: message.send with a ref and link.create related_to from $ref to the item" in operations
+
+
+def test_query_names_the_text_filter_and_the_one_string_filters(mcp):
+    """Parity audit, 23 October: text= matches exact words; text, linked and folder keep their commas."""
+    query = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_query")
+    fields = query["inputSchema"]["properties"]["fields"]["description"]
+    assert '"text": "exact words"' in fields
+    assert "(comma values as lists, except text, linked and folder)" in query["description"]
 
 
 def test_meaning_ranking_names_pro_and_expect_names_parent_work(mcp):
