@@ -33,8 +33,8 @@ def test_exactly_five_compact_tools(mcp):
     assert [t["name"] for t in tools] == NAMES
     # 5120 before the inbox wait key, 5250 before the sort values and the fetch example, 5450 before works_at,
     # 5494 and 900 before the reservation patch, board posts, owner me, the text filter and the cites keys
-    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5849
-    assert len(mcp.instructions().encode()) <= 1056
+    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5832
+    assert len(mcp.instructions().encode()) <= 1039
     assert "$defs" not in json.dumps(tools)
 
     def walk(node):
@@ -74,8 +74,9 @@ def test_agents_reserve_wirk_before_starting_it(mcp):
     """Samuel, 5 and 19 October: reserve before starting, so agents sharing one principal don't pick up the same work;
     the reservation is the item's own field, set at the revision read, not words in the body."""
     text = mcp.instructions()
-    assert "Fetch before work" in text and "never start an item whose card says reservation occupied:G" in text
-    assert "in one item.edit at the rN you read" in text and "session, branch and files above the old body" in text
+    assert "Fetch before work" in text and "never start one whose card says occupied:G, nor copy that G" in text
+    assert "in one item.edit at the rN read" in text and "fields status in_progress" in text
+    assert "session, branch and files above the old body" in text
     assert "keep its G" in text and "vacant:G" in text and "completing releases it" in text
 
 
@@ -92,14 +93,14 @@ def test_write_says_what_the_clis_write_help_says(mcp):
                    "quotation_mismatch"]:
         assert shared in cli_help and shared in operations, shared
     assert "work?:{owner_id? (me or an ID)" in operations
-    assert "on an item's board: message.send with a ref and link.create related_to from $ref to the item" in operations
+    assert "a board post adds link.create related_to from its $ref to the item" in operations
 
 
 def test_query_names_the_text_filter_and_the_one_string_filters(mcp):
-    """Parity audit, 23 October: text= matches exact words; text, linked and folder keep their commas."""
+    """Parity audit, 23 October: text= matches a case-insensitive substring; text, linked and folder keep commas."""
     query = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_query")
     fields = query["inputSchema"]["properties"]["fields"]["description"]
-    assert '"text": "exact words"' in fields
+    assert "text: a case-insensitive substring" in fields
     assert "(comma values as lists, except text, linked and folder)" in query["description"]
 
 
