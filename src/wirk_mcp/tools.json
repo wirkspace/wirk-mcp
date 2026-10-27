@@ -131,18 +131,18 @@
     "properties": {
      "request_id": {
       "type": "string",
-      "description": "Optional; named in the receipt; set your own when attaching files. After an uncertain result, resend with that ID."
+      "description": "Named in the receipt; set your own when attaching files. After an uncertain result, resend with that ID."
      },
      "operations": {
       "type": "array",
       "items": {
        "type": "object"
       },
-      "description": "1-32 of: {op:item.create, ref?, data:{title, body?, work?:{owner_id? (me or an ID), due_at?, criteria?:[{text}]}, context?:{level, state?, steward_id?, open?}, fields?, uploads?}, allow_duplicate_of?} · {op:item.edit, id, patch:{title?, body?, work?, fields?, reservation?, attach_uploads?}}; reservation occupied starts; occupied:G guards any edit; vacant:G releases; replace:G takes over (a reviewer, with a reason, when a person asks) · {op:link.create, data:{type, from, to}}, type related_to, contributes_to, requires, cites, relies_on or works_at (a person record to a company record), from/to may be $ref of a new item; a cites link also takes target_revision, selector, relation and quotation: the exact text, else quotation_mismatch · {op:link.remove, id} · {op:item.archive, id} · {op:item.restore, id} · {op:message.send, ref?, data:{body, title?, to?:[principal], reply_to?, uploads?}}; a board post adds link.create related_to from its $ref to the item · {op:message.acknowledge, messages:[ID]}. work makes an item work, context makes it context (level organization or initiative); fields maps a field to an option, null clears. uploads/attach_uploads: upload IDs or absolute local file paths, stored first; if one fails nothing is written."
+      "description": "1-32 of: {op:item.create, ref?, data:{title, body?, owner?, work?:{owner_id? (me or an ID), due_at?, criteria?:[{text}]}, context?:{level, state?, steward_id?, open?}, fields?, uploads?}, allow_duplicate_of?} · {op:item.edit, id, patch:{title?, body?, owner?, work?, fields?, reservation?, attach_uploads?}}; reservation occupied starts; occupied:G guards any edit; vacant:G releases; replace:G takes over (a reviewer, with a reason, when a person asks) · {op:link.create, data:{type, from, to}}, type related_to, contributes_to, requires, cites, relies_on or works_at (a person record to a company record), from/to may be $ref of a new item; a cites link also takes target_revision, selector, relation and quotation: the exact text, else quotation_mismatch · {op:link.remove, id} · {op:item.archive, id} · {op:item.restore, id} · {op:message.send, ref?, data:{body, title?, to?:[principal], reply_to?, uploads?}}; a board post adds link.create related_to from its $ref to the item · {op:message.acknowledge, messages:[ID]}. owner: a record's owner; on work, work.owner_id. work makes an item work, context makes it context (level organization or initiative); fields maps a field to an option, null clears. uploads/attach_uploads: upload IDs or absolute local file paths, stored first; if one fails nothing is written."
      },
      "expect": {
       "type": "object",
-      "description": "{\"<ID>\": <revision you read>}, e.g. {\"5c1e7a90\": 3}."
+      "description": "{\"<ID>\": <revision you read>}."
      },
      "mode": {
       "type": "string",
