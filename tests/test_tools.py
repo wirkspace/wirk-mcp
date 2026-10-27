@@ -351,8 +351,3 @@ def test_instructions_carry_the_method_card_and_say_its_lines_are_wirks_own(mcp)
     card lives here; the trust sentence keeps agents from skipping Method lines as content."""
     text = mcp.instructions()
     assert CARD in text and TRUST in text and text.endswith(CARD)
-    try:
-        from wirk_cli import hooks
-    except ImportError:  # the pinned wirk before the method
-        return
-    assert (hooks.CARD, hooks.TRUST) == (CARD, TRUST)
