@@ -32,8 +32,9 @@ def test_exactly_five_compact_tools(mcp):
     tools = definitions(mcp.tools())
     assert [t["name"] for t in tools] == NAMES
     # 5120 before the inbox wait key, 5250 before the sort values and the fetch example, 5450 before works_at,
-    # 5494 and 900 before the reservation patch, board posts, owner me, the text filter and the cites keys
-    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5832
+    # 5494 and 900 before the reservation patch, board posts, owner me, the text filter and the cites keys,
+    # 5832 before the record owner key (the expect example and "Optional" were cut to make room)
+    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5863
     assert len(mcp.instructions().encode()) <= 1039
     assert "$defs" not in json.dumps(tools)
 
@@ -87,13 +88,21 @@ def test_write_says_what_the_clis_write_help_says(mcp):
     cli_help = " ".join(HELP["write"].split())
     operations = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_write")[
         "inputSchema"]["properties"]["operations"]["description"]
-    assert "patch:{title?, body?, work?, fields?, reservation?, attach_uploads?}" in operations
+    assert "patch:{title?, body?, owner?, work?, fields?, reservation?, attach_uploads?}" in operations
     for shared in ["occupied:G guards any edit; vacant:G releases; replace:G takes over", "(me or an ID)",
                    "a cites link also takes target_revision, selector, relation and quotation: the exact text, else "
                    "quotation_mismatch"]:
         assert shared in cli_help and shared in operations, shared
     assert "work?:{owner_id? (me or an ID)" in operations
     assert "a board post adds link.create related_to from its $ref to the item" in operations
+
+
+def test_write_names_a_records_owner_in_create_and_edit(mcp):
+    """core 338: a record takes owner in item.create data and item.edit patch; work keeps work.owner_id."""
+    operations = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_write")[
+        "inputSchema"]["properties"]["operations"]["description"]
+    assert "data:{title, body?, owner?, work?:{owner_id?" in operations
+    assert "owner: a record's owner; on work, work.owner_id" in operations
 
 
 def test_query_names_the_text_filter_and_the_one_string_filters(mcp):
