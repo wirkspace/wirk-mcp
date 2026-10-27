@@ -26,6 +26,8 @@ codex mcp add wirk -- "$(command -v wirk-mcp)"                    # Codex
 
 Package releases are also listed on [GitHub](https://github.com/wirkspace/wirk-mcp/releases).
 
+Both stay current by themselves: at most once an hour, after a `wirk` command, `wirk` installs PyPI's latest release of itself and of the `wirk-mcp` beside it, in place (wirk 0.4.28). A server that is already running keeps the version it started with until the host starts it again. Running the installer again also upgrades.
+
 The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart. In an agent chat it uses that chat's own token instead, the one `wirk login` in the chat made: the chat is recognised by the thread ID a Codex request carries (or `CODEX_THREAD_ID`) and by `CLAUDE_CODE_SESSION_ID` in the server's environment (Claude Code, in the terminal and the desktop app), never by a tool argument. Until the chat has run `wirk login`, its calls answer `actor_setup_required`.
 
 ## Use
@@ -46,7 +48,7 @@ The tests need the `wirk` package installed beside this one: `uv pip install -e 
 
 A release is a version bump merged to main with `Release: publish wirk-mcp <version>` in its squash body; the version must equal the `wirk==` pin in `pyproject.toml`. After the release check passes on that exact commit, the tag `v<version>` is created there; pushing main publishes nothing, and a tag is never moved. The tag's Release workflow waits up to ten minutes for the `wirk` release of the same version, tests against that public CLI wheel, attaches the wheel, the sdist and `SHA256SUMS` to a GitHub Release, and publishes to PyPI through trusted publishing; no token is stored anywhere.
 
-Release `wirk` first: a tag whose matching `wirk` release does not exist fails and stays unpublished, and the next version is released in step instead of moving the tag. New GitHub releases stay prereleases until their downloaded public bytes match the build and a clean public installation passes. Retry failed jobs to reuse the successful build artifacts: identical existing assets are retained, missing assets are uploaded, and differing bytes or a moved tag stop the run. The Release workflow's manual verification input checks an existing public tag without publishing. Publication does not update already-installed or running clients.
+Release `wirk` first: a tag whose matching `wirk` release does not exist fails and stays unpublished, and the next version is released in step instead of moving the tag. New GitHub releases stay prereleases until their downloaded public bytes match the build and a clean public installation passes. Retry failed jobs to reuse the successful build artifacts: identical existing assets are retained, missing assets are uploaded, and differing bytes or a moved tag stop the run. The Release workflow's manual verification input checks an existing public tag without publishing. Installed clients pick up a published release themselves, on the first `wirk` command an hour or more after their last check; a running server keeps its version until the host starts it again.
 
 ## License
 
