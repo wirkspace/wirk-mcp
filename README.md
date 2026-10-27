@@ -28,7 +28,7 @@ Package releases are also listed on [GitHub](https://github.com/wirkspace/wirk-m
 
 Both stay current by themselves: at most once an hour, after a `wirk` command, `wirk` installs PyPI's latest release of itself and of the `wirk-mcp` beside it, in place (wirk 0.4.28). A server that is already running keeps the version it started with until the host starts it again. Running the installer again also upgrades.
 
-The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart. In an agent chat it uses that chat's own token instead, the one `wirk login` in the chat made: the chat is recognised by the thread ID a Codex request carries (or `CODEX_THREAD_ID`) and by `CLAUDE_CODE_SESSION_ID` in the server's environment (Claude Code, in the terminal and the desktop app), never by a tool argument. Until the chat has run `wirk login`, its calls answer `actor_setup_required`.
+The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart. In an agent chat it uses that chat's own token instead, the one `wirk login` in the chat made: the chat is recognised by the thread ID a Codex request carries (or `CODEX_THREAD_ID`) and by `CLAUDE_CODE_SESSION_ID` in the server's environment (Claude Code, in the terminal and the desktop app), never by a tool argument. Until the chat has run `wirk login`, its calls answer `actor_setup_required`. With several wirkspaces, `wirk wirkspace NAME` in the chat chooses the one it works in, and the chat's calls use it without a `workspace_id`.
 
 ## Use
 
