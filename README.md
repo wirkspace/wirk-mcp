@@ -17,18 +17,19 @@ uv tool install wirk
 uv tool install wirk-mcp
 ```
 
-Installing `wirk-mcp` alone provides the server binary, not the `wirk` CLI command. Run `wirk login`, then point your agent host at the installed binary. First check `claude mcp get wirk` or `codex mcp get wirk`: a server named wirk with another command is an earlier install. Replace it (Claude Code needs `claude mcp remove --scope user wirk` first; Codex's add replaces it), or skip the add when it already runs this binary:
+Installing `wirk-mcp` alone provides the server binary, not the `wirk` CLI command. Run `wirk login`, then point your agent host at the installed binary. First check `claude mcp get wirk`, `codex mcp get wirk` or `grok mcp list`: a server named wirk with another command is an earlier install. Replace it (Claude Code needs `claude mcp remove --scope user wirk` first; Codex's and Grok's adds replace it), or skip the add when it already runs this binary:
 
 ```
 claude mcp add --scope user wirk -- "$(command -v wirk-mcp)"      # Claude Code
 codex mcp add wirk -- "$(command -v wirk-mcp)"                    # Codex
+grok mcp add wirk -- "$(command -v wirk-mcp)"                     # Grok
 ```
 
 Package releases are also listed on [GitHub](https://github.com/wirkspace/wirk-mcp/releases).
 
-Both stay current by themselves: at most once an hour, after a `wirk` command, `wirk` installs PyPI's latest release of itself and of the `wirk-mcp` beside it, in place (wirk 0.4.28). A server that is already running keeps the version it started with until the host starts it again. Running the installer again also upgrades.
+Both stay current by themselves: at most once an hour, after a `wirk` command or from its message listener, `wirk` installs PyPI's latest release of itself and of the `wirk-mcp` beside it, in place (wirk 0.4.28). A server that is already running keeps the version it started with until the host starts it again. Running the installer again also upgrades.
 
-The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart. In an agent chat it uses that chat's own token instead, the one `wirk login` in the chat made: the chat is recognised by the thread ID a Codex request carries (or `CODEX_THREAD_ID`) and by `CLAUDE_CODE_SESSION_ID` in the server's environment (Claude Code, in the terminal and the desktop app), never by a tool argument. Until the chat has run `wirk login`, its calls answer `actor_setup_required`. With several wirkspaces, `wirk wirkspace NAME` in the chat chooses the one it works in, and the chat's calls use it without a `workspace_id`.
+The server uses the configuration `wirk login` made (`~/.config/wirk`, or `$WIRK_CONFIG_DIR`) and only the agents' token in it; it never reads a person's own token. A new login needs no restart. In an agent chat it uses that chat's own token instead, the one `wirk login` in the chat made: the chat is recognised by the thread ID a Codex request carries (or `CODEX_THREAD_ID`) and by `CLAUDE_CODE_SESSION_ID` (Claude Code, in the terminal and the desktop app) or `GROK_SESSION_ID` (Grok) in the server's environment, never by a tool argument. That environment is fixed when the host starts the server, so one server process holds one session's identity: after `/new` or `/resume` inside one Grok terminal session, its tools may act as the earlier session. Until the chat has run `wirk login`, its calls answer `actor_setup_required`. With several wirkspaces, `wirk wirkspace NAME` in the chat chooses the one it works in, and the chat's calls use it without a `workspace_id`.
 
 ## Use
 
@@ -42,8 +43,10 @@ The requests the agent makes and their content; the token, only as the bearer he
 
 ## Changes
 
-`wirk-mcp` releases in step with `wirk`. A version with no line here changed nothing in the server; the matching `wirk` release explains it.
+`wirk-mcp` releases in step with `wirk`. Since 0.4.2, a version with no line here changed nothing in the server; the matching `wirk` release explains it.
 
+- **0.4.33**: the server's instructions carry the method card and say which `Method ·` lines are WIRK's own. There is no 0.4.32.
+- **0.4.31**: the `wirk_write` text describes a record's `owner` on `item.create` and `item.edit`.
 - **0.4.29**: the tool text says how to reserve work, how to post on a board, that `owner` takes `me`, and that `text` is a case-insensitive substring.
 - **0.4.28**: this README describes the file paths `wirk_write` takes, the read-only annotations and releasing in lockstep. Clients update themselves from this version on.
 - **0.4.25**: catch-ups are answered from WIRK alone.
