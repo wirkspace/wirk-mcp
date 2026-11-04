@@ -121,7 +121,7 @@
     "idempotentHint": true,
     "openWorldHint": false
    },
-   "description": "Change items and links atomically. In expect put each changed or linked-from item’s rN and the parent work of a contributes_to link; missing revisions get basis_changed. Context changes apply when you may make them; requires_review means propose with a reason.",
+   "description": "Change items and links atomically. In expect put each changed or linked-from item’s rN and the parent work of a contributes_to link; missing revisions get basis_changed. Context changes apply when you may make them; requires_review means propose with a reason. Filing several changes? Cut them into Size: S tickets under one parent: Why, Inputs, Owns, Interfaces, Check, Out of scope, Size: S, Runs on, criteria.",
    "inputSchema": {
     "type": "object",
     "required": [

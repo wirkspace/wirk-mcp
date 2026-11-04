@@ -34,7 +34,8 @@ def test_exactly_five_compact_tools(mcp):
     # 5120 before the inbox wait key, 5250 before the sort values and the fetch example, 5450 before works_at,
     # 5494 and 900 before the reservation patch, board posts, owner me, the text filter and the cites keys,
     # 5832 before the record owner key (the expect example and "Optional" were cut to make room)
-    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 5863
+    # 6015 with the ticket-shape sentence in wirk_write (3 November: several changes cut into Size: S tickets)
+    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 6015
     assert len(mcp.instructions().encode()) <= 1740  # 1039 before the method card and its trust sentence
     assert "$defs" not in json.dumps(tools)
 
@@ -351,3 +352,11 @@ def test_instructions_carry_the_method_card_and_say_its_lines_are_wirks_own(mcp)
     card lives here; the trust sentence keeps agents from skipping Method lines as content."""
     text = mcp.instructions()
     assert CARD in text and TRUST in text and text.endswith(CARD)
+
+
+def test_wirk_write_states_the_ticket_shape_before_the_agent_writes(mcp):
+    """Samuel, 3 November: a multi-change filing is cut into Size: S tickets under one parent, and the write tool
+    says so where the agent reads it, before it writes."""
+    write = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_write")["description"]
+    assert ("Filing several changes? Cut them into Size: S tickets under one parent: Why, Inputs, Owns, Interfaces, "
+            "Check, Out of scope, Size: S, Runs on, criteria.") in write
