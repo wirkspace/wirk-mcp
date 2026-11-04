@@ -45,7 +45,8 @@ The requests the agent makes and their content; the token, only as the bearer he
 
 `wirk-mcp` releases in step with `wirk`. A version with no line here changed nothing in the server; the matching `wirk` release explains it.
 
-- **0.4.33**: the server's instructions carry the method card and say which `Method ·` lines are WIRK's own.
+- **0.4.33**: the server's instructions carry the method card and say which `Method ·` lines are WIRK's own. There is no 0.4.32.
+- **0.4.31**: the `wirk_write` text describes a record's `owner` on `item.create` and `item.edit`.
 - **0.4.29**: the tool text says how to reserve work, how to post on a board, that `owner` takes `me`, and that `text` is a case-insensitive substring.
 - **0.4.28**: this README describes the file paths `wirk_write` takes, the read-only annotations and releasing in lockstep. Clients update themselves from this version on.
 - **0.4.25**: catch-ups are answered from WIRK alone.
