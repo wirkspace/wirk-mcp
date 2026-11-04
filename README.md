@@ -43,7 +43,7 @@ The requests the agent makes and their content; the token, only as the bearer he
 
 ## Changes
 
-`wirk-mcp` releases in step with `wirk`. A version with no line here changed nothing in the server; the matching `wirk` release explains it.
+`wirk-mcp` releases in step with `wirk`. Since 0.4.2, a version with no line here changed nothing in the server; the matching `wirk` release explains it.
 
 - **0.4.33**: the server's instructions carry the method card and say which `Method ·` lines are WIRK's own. There is no 0.4.32.
 - **0.4.31**: the `wirk_write` text describes a record's `owner` on `item.create` and `item.edit`.
