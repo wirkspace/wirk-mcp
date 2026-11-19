@@ -35,7 +35,7 @@ def test_exactly_five_compact_tools(mcp):
     # 5494 and 900 before the reservation patch, board posts, owner me, the text filter and the cites keys,
     # 5832 before the record owner key (the expect example and "Optional" were cut to make room)
     # 6015 with the ticket-shape sentence in wirk_write (3 November: several changes cut into Size: S tickets)
-    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 6015
+    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 6210  # 6210 with decisions (kind, state, data.decision)
     assert len(mcp.instructions().encode()) <= 1740  # 1039 before the method card and its trust sentence
     assert "$defs" not in json.dumps(tools)
 
@@ -250,7 +250,7 @@ def test_privacy_wording_and_no_v1():
 def test_the_package_pins_the_tested_cli():
     import tomllib
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-    assert "wirk==0.4.37" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
+    assert "wirk==0.4.38" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
 
 
 def test_an_unknown_outcome_is_worded_for_mcp(mcp):
@@ -360,3 +360,11 @@ def test_wirk_write_states_the_ticket_shape_before_the_agent_writes(mcp):
     write = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_write")["description"]
     assert ("Filing several changes? Cut them into Size: S tickets under one parent: Why, Inputs, Owns, Interfaces, "
             "Check, Out of scope, Size: S, Runs on, criteria.") in write
+
+
+def test_decisions_are_described_for_query_and_write(mcp):
+    tools = {t["name"]: t for t in definitions(mcp.tools())}
+    write = tools["wirk_write"]["inputSchema"]["properties"]["operations"]["description"]
+    query = tools["wirk_query"]["inputSchema"]["properties"]["fields"]["description"]
+    assert "decision?:{quote?, supersedes?:[ID]}" in write and "owner its human director" in write
+    assert "decision (state in_force or superseded" in query
