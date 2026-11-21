@@ -28,6 +28,8 @@ jobs:
           python-version: '3.12'
       - name: The reviewed tag names this package's version
         run: test "v$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')" = "$GITHUB_REF_NAME"
+      - name: server.json names the same version for the registry
+        run: test "$(python -c 'import json; s = json.load(open("server.json")); print(s["version"], *[p["version"] for p in s["packages"]])')" = "${GITHUB_REF_NAME#v} ${GITHUB_REF_NAME#v}"
       - name: Wait for the matching verified public CLI dependency
         env:
           GIT_TERMINAL_PROMPT: "0"
@@ -89,3 +91,55 @@ jobs:
           packages-dir: pypi-dist
       - name: Verify published PyPI bytes
         run: python "$RUNNER_TEMP/release_assets.py" pypi-verify --kind mcp --tag "$GITHUB_REF_NAME" --dist dist
+  mcp-registry:
+    # Off until wirk.life carries the registry's TXT record and the mcp-registry environment holds the matching key.
+    needs: pypi
+    if: ${{ github.event_name == 'push' && vars.MCP_REGISTRY_PUBLISH == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: mcp-registry
+    permissions:
+      contents: read
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.11
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - name: Skip a version the registry already lists
+        id: registry
+        run: |
+          status="$(curl --silent --show-error --retry 3 --max-time 60 --output /dev/null --write-out '%{http_code}' "https://registry.modelcontextprotocol.io/v0.1/servers/life.wirk%2Fwirk-mcp/versions/${GITHUB_REF_NAME#v}")"
+          case "$status" in
+            200) echo "pending=false" >> "$GITHUB_OUTPUT" ;;
+            404) echo "pending=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "The registry answered $status" >&2; exit 1 ;;
+          esac
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        if: ${{ steps.registry.outputs.pending == 'true' }}
+      - name: Download and verify mcp-publisher
+        if: ${{ steps.registry.outputs.pending == 'true' }}
+        run: |
+          set -euo pipefail
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          cd "$RUNNER_TEMP"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+      - name: Log in to the registry with wirk.life's DNS record
+        if: ${{ steps.registry.outputs.pending == 'true' }}
+        env:
+          MCP_REGISTRY_DNS_KEY: ${{ secrets.MCP_REGISTRY_DNS_KEY }}
+        run: |
+          "$RUNNER_TEMP/mcp-publisher" login dns --domain wirk.life --private-key "$MCP_REGISTRY_DNS_KEY"
+      - name: Publish server.json to the MCP Registry
+        if: ${{ steps.registry.outputs.pending == 'true' }}
+        run: |
+          "$RUNNER_TEMP/mcp-publisher" publish
