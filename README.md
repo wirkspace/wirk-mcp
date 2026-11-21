@@ -70,10 +70,12 @@ The tests need the `wirk` package installed beside this one: `uv pip install -e 
 
 ## Releasing
 
-A release is a version bump merged to main with `Release: publish wirk-mcp <version>` in its squash body; the version must equal the `wirk==` pin in `pyproject.toml`. After the release check passes on that exact commit, the tag `v<version>` is created there; pushing main publishes nothing, and a tag is never moved. The tag's Release workflow waits up to ten minutes for the `wirk` release of the same version, tests against that public CLI wheel, attaches the wheel, the sdist and `SHA256SUMS` to a GitHub Release, and publishes to PyPI through trusted publishing; no token is stored anywhere.
+A release is a version bump merged to main with `Release: publish wirk-mcp <version>` in its squash body; the version must equal the `wirk==` pin in `pyproject.toml`. After the release check passes on that exact commit, the tag `v<version>` is created there; pushing main publishes nothing, and a tag is never moved. The tag's Release workflow waits up to ten minutes for the `wirk` release of the same version, tests against that public CLI wheel, attaches the wheel, the sdist and `SHA256SUMS` to a GitHub Release, and publishes to PyPI through trusted publishing; no PyPI token is stored anywhere. It then lists the release in the [MCP Registry](https://registry.modelcontextprotocol.io) as `life.wirk/wirk-mcp` from `server.json`, whose version moves with `pyproject.toml`'s; the registry trusts the name through a TXT record on wirk.life, and the matching private key is the one stored secret, `MCP_REGISTRY_DNS_KEY` in the `mcp-registry` environment. That step runs once the repository variable `MCP_REGISTRY_PUBLISH` is `true`, and skips a version the registry already lists.
 
 Release `wirk` first: a tag whose matching `wirk` release does not exist fails and stays unpublished, and the next version is released in step instead of moving the tag. New GitHub releases stay prereleases until their downloaded public bytes match the build and a clean public installation passes. Retry failed jobs to reuse the successful build artifacts: identical existing assets are retained, missing assets are uploaded, and differing bytes or a moved tag stop the run. The Release workflow's manual verification input checks an existing public tag without publishing. Installed clients pick up a published release themselves, on the first `wirk` command an hour or more after their last check; a running server keeps its version until the host starts it again.
 
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
+
+<!-- mcp-name: life.wirk/wirk-mcp -->

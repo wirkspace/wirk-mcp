@@ -51,3 +51,32 @@ def test_pypi_follows_public_qualification_and_skips_identical_retries():
     assert steps[prepare]["id"] == "prepare"
     assert steps[upload]["if"] == "${{ steps.prepare.outputs.pending == 'true' }}"
     assert "skip-existing" not in steps[upload].get("with", {})
+
+
+def test_mcp_registry_follows_pypi_with_a_verified_publisher_and_one_secret():
+    doc = workflow()
+    job = doc["jobs"]["mcp-registry"]
+    assert job["needs"] == "pypi"
+    assert "github.event_name == 'push'" in job["if"] and "vars.MCP_REGISTRY_PUBLISH == 'true'" in job["if"]
+    assert job["environment"] == "mcp-registry" and job["permissions"] == {"contents": "read"}
+    assert re.fullmatch(r"v\d+\.\d+\.\d+", job["env"]["MCP_PUBLISHER_VERSION"])  # pinned, never releases/latest
+    steps = job["steps"]
+    check = next(i for i, s in enumerate(steps) if "/versions/" in s.get("run", ""))
+    fetch = next(i for i, s in enumerate(steps) if "cosign verify-blob" in s.get("run", ""))
+    login = next(i for i, s in enumerate(steps) if "login dns" in s.get("run", ""))
+    publish = next(i for i, s in enumerate(steps) if s.get("run", "").strip().endswith("mcp-publisher\" publish"))
+    assert check < fetch < login < publish
+    assert "--domain wirk.life" in steps[login]["run"]
+    assert steps[login]["env"] == {"MCP_REGISTRY_DNS_KEY": "${{ secrets.MCP_REGISTRY_DNS_KEY }}"}
+    assert "secrets." not in steps[login]["run"]  # the key reaches the command through the environment only
+    assert all(s["if"] == "${{ steps.registry.outputs.pending == 'true' }}" for s in steps[check + 1:])
+    assert "releases/latest" not in (ROOT / ".github/workflows/release.yml").read_text()
+
+
+def test_build_refuses_a_tag_that_server_json_does_not_name():
+    steps = workflow()["jobs"]["build"]["steps"]
+    tag = next(i for i, s in enumerate(steps) if "pyproject.toml" in s.get("run", "") and "GITHUB_REF_NAME" in s["run"])
+    server = next(i for i, s in enumerate(steps) if "server.json" in s.get("run", ""))
+    build = next(i for i, s in enumerate(steps) if s.get("run", "") == "python -m build")
+    assert tag < server < build
+    assert "GITHUB_REF_NAME" in steps[server]["run"]

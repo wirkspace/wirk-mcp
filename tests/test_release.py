@@ -1,5 +1,6 @@
 """The release workflow and the package metadata: installable from PyPI or the release wheels, no stored token."""
 
+import json
 import os
 import re
 import subprocess
@@ -25,13 +26,29 @@ def test_depends_on_the_wirk_package_by_name():
 def test_release_workflow():
     text = (ROOT / ".github" / "workflows" / "release.yml").read_text()
     assert re.search(r"tags:\s*\[\s*['\"]v\*['\"]\s*\]", text)
-    assert "secrets." not in text
+    assert re.findall(r"secrets\.\w+", text) == ["secrets.MCP_REGISTRY_DNS_KEY"]  # PyPI needs no token; the registry's DNS key is the one secret
     assert "SHA256SUMS" in text and "publish-release.yml@" in text
     assert "vars.PYPI_PUBLISH == 'true'" in text and "id-token: write" in text
     assert "pypa/gh-action-pypi-publish@" in text and "environment: pypi" in text
     assert "GITHUB_REF_NAME" in text and "pytest" in text
     for use in re.findall(r"uses: (\S+)", text):
         assert re.fullmatch(r"[\w.-]+/[\w.-]+(?:/\.github/workflows/[\w.-]+)?@[0-9a-f]{40}", use), use
+
+
+def test_server_json_lists_this_package_for_the_mcp_registry():
+    """The registry entry moves in lockstep with the package, and PyPI's README proves the name."""
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
+    server = json.loads((ROOT / "server.json").read_text())
+    assert server["$schema"] == "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json"
+    assert server["name"] == "life.wirk/wirk-mcp"  # reverse DNS of wirk.life, proven by its TXT record
+    assert server["version"] == project["version"]
+    assert server["description"] == project["description"] and len(server["description"]) <= 100
+    assert server["repository"] == {"url": "https://github.com/wirkspace/wirk-mcp", "source": "github"}
+    [package] = server["packages"]
+    assert package["registryType"] == "pypi" and package["identifier"] == project["name"]
+    assert package["version"] == project["version"] and package["transport"] == {"type": "stdio"}
+    assert project["readme"] == "README.md"
+    assert re.search(r"^<!-- mcp-name: life\.wirk/wirk-mcp -->$", (ROOT / "README.md").read_text(), re.M)
 
 
 def test_every_workflow_parses_as_yaml():
