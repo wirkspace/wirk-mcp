@@ -36,7 +36,7 @@ def test_exactly_five_compact_tools(mcp):
     # 5832 before the record owner key (the expect example and "Optional" were cut to make room)
     # 6015 with the ticket-shape sentence in wirk_write (3 November: several changes cut into Size: S tickets)
     assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 6210  # 6210 with decisions (kind, state, data.decision)
-    assert len(mcp.instructions().encode()) <= 1740  # 1039 before the method card and its trust sentence
+    assert len(mcp.instructions().encode()) <= 1865  # the markdown-link form; 1039 before the method card and its trust sentence; 1740 before the links sentence
     assert "$defs" not in json.dumps(tools)
 
     def walk(node):
@@ -250,7 +250,7 @@ def test_privacy_wording_and_no_v1():
 def test_the_package_pins_the_tested_cli():
     import tomllib
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
-    assert "wirk==0.4.38" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
+    assert "wirk==0.4.39" in project["dependencies"] and not any("git+" in d for d in project["dependencies"])
 
 
 def test_an_unknown_outcome_is_worded_for_mcp(mcp):

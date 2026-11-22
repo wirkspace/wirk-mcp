@@ -840,19 +840,19 @@ wheels = [
 
 [[package]]
 name = "wirk"
-version = "0.4.38"
+version = "0.4.39"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/48/c0/8052f30d597c55a395c5837f9c1ef053ebf49c24db83266c9866e4296277/wirk-0.4.38.tar.gz", hash = "sha256:8acee7f6cde034f69989da1e569de3d497f31c2533c06d7b9571d40e002950c5", size = 354186, upload-time = "2026-11-19T18:47:04.384Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/70/b9/51241e644cd1cbb097aab03a996e428a3f685a9229e7d8885591dea29167/wirk-0.4.39.tar.gz", hash = "sha256:b3b944c03cd0b02aefa22e252d1f641acf7af3a14318d9b81aac4f1dfc999a0b", size = 356549, upload-time = "2026-11-22T04:00:42.413Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c6/3f/274118851e8a7666a13d92ddaeaf5e9185c3f291113b2f6f8b67c942a182/wirk-0.4.38-py3-none-any.whl", hash = "sha256:6bbc9739abcbd8e4cafbfa00bc5d3955b155d249837fbb4884cfb226c83ee741", size = 148733, upload-time = "2026-11-19T18:47:02.91Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/86/087a909528ee34b3014ec4f32129b686956c105679e3a7fd9a6f53d55656/wirk-0.4.39-py3-none-any.whl", hash = "sha256:9661c12656bc322ed31083a9d04380ab1703cb442ef2bf5c2cd65403b37aa1fd", size = 149996, upload-time = "2026-11-22T04:00:41.158Z" },
 ]
 
 [[package]]
 name = "wirk-mcp"
-version = "0.4.38"
+version = "0.4.39"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
@@ -872,6 +872,6 @@ requires-dist = [
     { name = "mcp", specifier = ">=2.2,<3" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=8,<10" },
     { name = "pyyaml", marker = "extra == 'test'", specifier = ">=6" },
-    { name = "wirk", specifier = "==0.4.38" },
+    { name = "wirk", specifier = "==0.4.39" },
 ]
 provides-extras = ["test"]
