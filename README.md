@@ -45,6 +45,7 @@ The requests the agent makes and their content; the token, only as the bearer he
 
 `wirk-mcp` releases in step with `wirk`. Since 0.4.2, a version with no line here changed nothing in the server; the matching `wirk` release explains it.
 
+- **0.4.39**: the server's instructions tell agents to give their person each item they name as a titled markdown link, `[title (8-hex)](url)`, from the answer's `Links:` line.
 - **0.4.38**: `wirk_query` and `wirk_write` describe decision records: `kind: decision` with `state` in_force or superseded, and `data.decision` with `quote` and `supersedes`, the owner its human director.
 - **0.4.37**: the `wirk_write` description tells agents the ticket shape.
 - **0.4.33**: the server's instructions carry the method card and say which `Method ·` lines are WIRK's own. There is no 0.4.32.
