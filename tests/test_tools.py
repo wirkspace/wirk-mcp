@@ -35,7 +35,8 @@ def test_exactly_five_compact_tools(mcp):
     # 5494 and 900 before the reservation patch, board posts, owner me, the text filter and the cites keys,
     # 5832 before the record owner key (the expect example and "Optional" were cut to make room)
     # 6015 with the ticket-shape sentence in wirk_write (3 November: several changes cut into Size: S tickets)
-    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 6210  # 6210 with decisions (kind, state, data.decision)
+    # 6210 with decisions (kind, state, data.decision); 6290 with the sign-up pointer in wirk_status (no sign-up tool)
+    assert len(json.dumps(tools, separators=(",", ":"), ensure_ascii=False).encode()) <= 6290
     assert len(mcp.instructions().encode()) <= 1865  # the markdown-link form; 1039 before the method card and its trust sentence; 1740 before the links sentence
     assert "$defs" not in json.dumps(tools)
 
@@ -52,6 +53,12 @@ def test_exactly_five_compact_tools(mcp):
                 walk(value)
     walk(tools)
     assert all(t["inputSchema"]["additionalProperties"] is False for t in tools)
+
+
+def test_status_tells_an_agent_with_no_person_to_sign_up_in_a_shell(mcp):
+    """There is no sign-up tool: an agent with no person runs wirk signup in a shell once, as it runs wirk login."""
+    status = next(t for t in definitions(mcp.tools()) if t["name"] == "wirk_status")["description"]
+    assert "Not signed in? In a shell, run wirk login; with no person to approve, wirk signup." in status
 
 
 def test_agent_text_names_nothing_of_the_persons(mcp):
