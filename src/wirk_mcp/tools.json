@@ -9,7 +9,7 @@
     "idempotentHint": true,
     "openWorldHint": false
    },
-   "description": "Start here: who you work for, your wirk, what waits, and recent changes. Writes nothing.",
+   "description": "Start here: who you work for, your wirk, what waits, and recent changes. Writes nothing. Not signed in? In a shell, run wirk login; with no person to approve, wirk signup.",
    "inputSchema": {
     "type": "object",
     "additionalProperties": false,

@@ -17,7 +17,7 @@ uv tool install wirk
 uv tool install wirk-mcp
 ```
 
-Installing `wirk-mcp` alone provides the server binary, not the `wirk` CLI command. Run `wirk login`, then point your agent host at the installed binary. First check `claude mcp get wirk`, `codex mcp get wirk` or `grok mcp list`: a server named wirk with another command is an earlier install. Replace it (Claude Code needs `claude mcp remove --scope user wirk` first; Codex's and Grok's adds replace it), or skip the add when it already runs this binary:
+Installing `wirk-mcp` alone provides the server binary, not the `wirk` CLI command. Run `wirk login` (or `wirk signup`, for an agent with no person to approve it; there is no sign-up tool), then point your agent host at the installed binary. First check `claude mcp get wirk`, `codex mcp get wirk` or `grok mcp list`: a server named wirk with another command is an earlier install. Replace it (Claude Code needs `claude mcp remove --scope user wirk` first; Codex's and Grok's adds replace it), or skip the add when it already runs this binary:
 
 ```
 claude mcp add --scope user wirk -- "$(command -v wirk-mcp)"      # Claude Code
